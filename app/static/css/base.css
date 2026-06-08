@@ -1,0 +1,83 @@
+:root {
+  --primary:    #1a73e8;
+  --primary-dk: #1557b0;
+  --danger:     #d93025;
+  --success:    #1e8e3e;
+  --warning:    #f9ab00;
+  --info:       #1a73e8;
+  --bg:         #f8f9fa;
+  --surface:    #ffffff;
+  --border:     #dadce0;
+  --text:       #202124;
+  --text-muted: #5f6368;
+  --radius:     8px;
+  --shadow:     0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+  --shadow-md:  0 4px 6px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3, h4 { font-weight: 600; line-height: 1.3; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.125rem; }
+
+/* ── Alertas ── */
+.alert {
+  padding: .75rem 1rem;
+  border-radius: var(--radius);
+  border-left: 4px solid;
+  margin-bottom: 1rem;
+  font-size: .9rem;
+}
+.alert-danger  { background:#fce8e6; border-color:var(--danger);  color:#c5221f; }
+.alert-success { background:#e6f4ea; border-color:var(--success); color:#137333; }
+.alert-warning { background:#fef7e0; border-color:var(--warning); color:#7f5c00; }
+.alert-info    { background:#e8f0fe; border-color:var(--info);    color:#1967d2; }
+
+/* ── Botões ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .55rem 1.2rem;
+  border: none;
+  border-radius: var(--radius);
+  font-size: .95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+  text-decoration: none;
+}
+.btn-primary  { background: var(--primary);  color: #fff; }
+.btn-primary:hover  { background: var(--primary-dk); color: #fff; text-decoration: none; }
+.btn-danger   { background: var(--danger);   color: #fff; }
+.btn-danger:hover   { background: #b52a21; color: #fff; text-decoration: none; }
+.btn-outline  { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-outline:hover  { background: #e8f0fe; text-decoration: none; }
+.btn-sm { padding: .35rem .8rem; font-size: .85rem; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* ── Badge ── */
+.badge {
+  display: inline-block;
+  padding: .2rem .55rem;
+  border-radius: 99px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.badge-admin  { background: #e8f0fe; color: #1967d2; }
+.badge-medico { background: #e6f4ea; color: #137333; }

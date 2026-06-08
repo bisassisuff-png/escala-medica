@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Janelas — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>&#128197; Janelas de Preenchimento</h1>
+  <a href="{{ url_for('admin.windows_new') }}" class="btn btn-primary">+ Nova janela</a>
+</div>
+
+{% if windows %}
+<div style="display:flex;flex-direction:column;gap:1rem;">
+  {% for w in windows %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <strong style="font-size:1.1rem;">Escala {{ w.year }}</strong>
+        {% if w.status == 'draft' %}
+          <span class="badge" style="background:#f1f3f4;color:var(--text-muted);margin-left:.5rem;">Rascunho</span>
+        {% elif w.status == 'open' %}
+          <span class="badge badge-medico" style="margin-left:.5rem;">Aberta</span>
+        {% elif w.status == 'closed' %}
+          <span class="badge badge-admin" style="margin-left:.5rem;">Encerrada</span>
+        {% elif w.status == 'published' %}
+          <span class="badge" style="background:#e6f4ea;color:#137333;margin-left:.5rem;">Publicada</span>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <a href="{{ url_for('admin.windows_detail', id=w.id) }}" class="btn btn-sm btn-outline">Ver detalhes</a>
+        {% if w.status == 'draft' %}
+          <form method="POST" action="{{ url_for('admin.windows_open', id=w.id) }}">
+            {{ csrf_token_field() }}
+            <button class="btn btn-sm btn-primary" onclick="return confirm('Abrir janela {{ w.year }} para preenchimento?')">Abrir</button>
+          </form>
+        {% elif w.status == 'open' %}
+          <form method="POST" action="{{ url_for('admin.windows_close', id=w.id) }}">
+            {{ csrf_token_field() }}
+            <button class="btn btn-sm btn-danger" onclick="return confirm('Encerrar o preenchimento da janela {{ w.year }}?')">Encerrar</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body" style="display:flex;gap:2rem;flex-wrap:wrap;font-size:.9rem;color:var(--text-muted);">
+      <span>&#128197; Ano: <strong style="color:var(--text);">{{ w.year }}</strong></span>
+      <span>&#128275; Abertura: <strong style="color:var(--text);">{{ w.open_at.strftime('%d/%m/%Y %H:%M') if w.open_at else '—' }}</strong></span>
+      <span>&#128274; Encerramento: <strong style="color:var(--text);">{{ w.close_at.strftime('%d/%m/%Y %H:%M') if w.close_at else '—' }}</strong></span>
+      <span>&#128100; Criada por: <strong style="color:var(--text);">{{ w.creator.name }}</strong></span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body empty-state">
+    <div class="empty-state__icon">&#128197;</div>
+    <h3>Nenhuma janela criada</h3>
+    <p>Crie a primeira janela de preenchimento anual.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Dashboard KPIs — Escala Médica{% endblock %}
+
+{% block extra_css %}
+<style>
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:1.25rem; }
+  .chart-card h3 { font-size:1rem; margin-bottom:1rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:1.25rem; margin-bottom:1.5rem; }
+  .chart-full { grid-column:1/-1; }
+  @media(max-width:768px) { .charts-grid { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>&#128202; Dashboard KPIs</h1>
+</div>
+
+<!-- Filtros -->
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+    <form method="GET" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <label class="form-label">Escala (ano)</label>
+        <select name="window_id" class="form-control" onchange="this.form.submit()">
+          {% for w in windows %}
+          <option value="{{ w.id }}" {% if w.id == window_id %}selected{% endif %}>{{ w.year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Mês</label>
+        <select name="month" class="form-control" onchange="this.form.submit()">
+          {% for m in range(1,13) %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ month_names[m] }}</option>
+          {% endfor %}
+        </select>
+        {% if window_id %}<input type="hidden" name="window_id" value="{{ window_id }}">{% endif %}
+      </div>
+    </form>
+    {% if window %}<span style="color:var(--text-muted);font-size:.875rem;align-self:center;">Exibindo {{ month_names[month] }}/{{ window.year }}</span>{% endif %}
+  </div>
+</div>
+
+{% if not windows %}
+<div class="card"><div class="card-body empty-state"><p>Nenhuma escala publicada. Publique uma escala para ver os KPIs.</p></div></div>
+{% elif data %}
+
+<!-- KPI Cards de resumo -->
+<div class="kpi-grid" style="margin-bottom:1.5rem;">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Total de plantões (mês)</div>
+    <div class="kpi-card__value">{{ data.doctor_totals.values()|sum }}</div>
+    <div class="kpi-card__sub">{{ month_names[month] }}/{{ window.year }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Média por médico</div>
+    <div class="kpi-card__value">{{ data.avg_load }}</div>
+    <div class="kpi-card__sub">plantões/mês</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Escala anual (total)</div>
+    <div class="kpi-card__value">{{ data.total_schedule }}</div>
+    <div class="kpi-card__sub">entradas no banco</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Trocas abertas</div>
+    <div class="kpi-card__value" style="color:{% if data.swap_open %}var(--warning){% else %}var(--success){% endif %};">{{ data.swap_open }}</div>
+    <div class="kpi-card__sub">{{ data.swap_accepted }} aceitas · {{ data.swap_cancelled }} canceladas</div>
+  </div>
+</div>
+
+<!-- Alertas -->
+{% if data.overloaded or data.underloaded %}
+<div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--warning);">
+  <div class="card-header"><h3>&#9888; Alertas de distribuição</h3></div>
+  <div class="card-body" style="display:flex;gap:2rem;flex-wrap:wrap;">
+    {% if data.overloaded %}
+    <div>
+      <strong style="color:var(--danger);">Sobrecarregados (&gt;130% da média):</strong>
+      <ul style="margin:.35rem 0 0 1.2rem;font-size:.9rem;">
+        {% for did in data.overloaded %}
+        <li>{{ data.doctors[did].name if did in data.doctors else did }}
+          — {{ data.doctor_totals[did] }} plantões</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if data.underloaded %}
+    <div>
+      <strong style="color:var(--info);">Subutilizados (&lt;70% da média):</strong>
+      <ul style="margin:.35rem 0 0 1.2rem;font-size:.9rem;">
+        {% for did in data.underloaded %}
+        <li>{{ data.doctors[did].name if did in data.doctors else did }}
+          — {{ data.doctor_totals[did] }} plantões</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Gráficos -->
+<div class="charts-grid">
+
+  <!-- Plantões por médico (mês) -->
+  <div class="chart-card chart-full">
+    <h3>Plantões por médico — {{ month_names[month] }}/{{ window.year }}</h3>
+    <canvas id="chartDoctorMonth" height="80"></canvas>
+  </div>
+
+  <!-- Distribuição por dia da semana -->
+  <div class="chart-card">
+    <h3>Distribuição por dia da semana</h3>
+    <canvas id="chartWeekday"></canvas>
+  </div>
+
+  <!-- Trocas -->
+  <div class="chart-card">
+    <h3>Situação das trocas (ano)</h3>
+    <canvas id="chartSwaps"></canvas>
+  </div>
+
+  <!-- Comparativo mês atual vs anterior -->
+  <div class="chart-card chart-full">
+    <h3>Comparativo: {{ month_names[month] }} vs {{ month_names[month-1 if month>1 else 12] }}</h3>
+    <canvas id="chartComparison" height="80"></canvas>
+  </div>
+
+</div>
+
+<!-- Ranking -->
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-header"><h3>&#127942; Ranking de plantões — {{ month_names[month] }}/{{ window.year }}</h3></div>
+  {% if data.ranking %}
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>#</th><th>Médico</th><th>Total</th>
+        {% for lid, loc in data.locations.items() %}<th>{{ loc.name }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for did, total in data.ranking %}
+        <tr>
+          <td><strong>{{ loop.index }}</strong></td>
+          <td>{{ data.doctors[did].name if did in data.doctors else did }}</td>
+          <td><strong>{{ total }}</strong></td>
+          {% for lid in data.locations %}
+          <td>{{ data.doctor_loc.get(did, {}).get(lid, 0) }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state"><p>Sem dados para este mês.</p></div>
+  {% endif %}
+</div>
+
+<!-- Taxa de ocupação por local -->
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-header"><h3>&#127973; Ocupação por local — {{ month_names[month] }}</h3></div>
+  <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap;">
+    {% for lid, loc in data.locations.items() %}
+    {% set filled = data.loc_counts.get(lid, 0) %}
+    {% set expected = data.days_in_month %}
+    {% set pct = ((filled / expected * 100) | round(1)) if expected else 0 %}
+    <div style="flex:1;min-width:180px;background:var(--bg);border-radius:var(--radius);padding:1rem;">
+      <div style="font-weight:600;margin-bottom:.5rem;">{{ loc.name }}</div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:.5rem;">
+        <div style="width:{{ [pct,100]|min }}%;height:100%;background:{% if pct>=90 %}var(--success){% elif pct>=70 %}var(--primary){% else %}var(--danger){% endif %};border-radius:4px;"></div>
+      </div>
+      <div style="font-size:.85rem;color:var(--text-muted);">{{ filled }} / {{ expected }} dias ({{ pct }}%)</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Médicos com mais restrições -->
+{% if data.restr_rows %}
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-header"><h3>&#128683; Médicos com mais restrições (ano)</h3></div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Médico</th><th>Restrições</th></tr></thead>
+      <tbody>
+        {% for row in data.restr_rows %}
+        <tr>
+          <td>{{ data.doctors[row.doctor_id].name if row.doctor_id in data.doctors else row.doctor_id }}</td>
+          <td><strong>{{ row.c }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %} {# endif data #}
+{% endblock %}
+
+{% block extra_js %}
+{% if data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+// Paleta de cores
+const COLORS = ['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
+
+// 1. Plantões por médico (barras empilhadas por local)
+(function() {
+  const doctors = {{ data.doc_ids|tojson }};
+  const docNames = {{ data.doc_names|tojson }};
+  const locations = {{ data.loc_ids|tojson }};
+  const locNameMap = {{ data.loc_name_map|tojson }};
+  const doctorLoc = {{ data.doctor_loc|tojson }};
+
+  const datasets = locations.map((lid, i) => ({
+    label: locNameMap[lid] || lid,
+    data: doctors.map(did => (doctorLoc[did] || {})[lid] || 0),
+    backgroundColor: COLORS[i % COLORS.length],
+    borderRadius: 3,
+  }));
+
+  new Chart(document.getElementById('chartDoctorMonth'), {
+    type: 'bar',
+    data: { labels: docNames, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+})();
+
+// 2. Distribuição por dia da semana
+(function() {
+  const days = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  const counts = {{ data.weekday_counts|tojson }};
+  const data = days.map((_, i) => counts[i] || 0);
+
+  new Chart(document.getElementById('chartWeekday'), {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{ label: 'Plantões', data, backgroundColor: '#1a73e8', borderRadius: 3 }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+               scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+})();
+
+// 3. Trocas (doughnut)
+(function() {
+  new Chart(document.getElementById('chartSwaps'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Abertas','Aceitas','Canceladas'],
+      datasets: [{ data: [{{ data.swap_open }},{{ data.swap_accepted }},{{ data.swap_cancelled }}],
+                   backgroundColor: ['#fbbc04','#34a853','#ea4335'] }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+})();
+
+// 4. Comparativo mês atual vs anterior
+(function() {
+  const doctors = {{ data.doc_ids|tojson }};
+  const docNames = {{ data.doc_names|tojson }};
+  const curr = {{ data.doctor_totals|tojson }};
+  const prev = {{ data.prev_totals|tojson }};
+
+  new Chart(document.getElementById('chartComparison'), {
+    type: 'bar',
+    data: {
+      labels: docNames,
+      datasets: [
+        { label: '{{ month_names[month] }}', data: doctors.map(id => curr[id]||0), backgroundColor: '#1a73e8', borderRadius: 3 },
+        { label: '{{ month_names[month-1 if month>1 else 12] }}', data: doctors.map(id => prev[id]||0), backgroundColor: '#dadce0', borderRadius: 3 },
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } },
+               scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

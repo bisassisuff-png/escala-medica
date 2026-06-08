@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Janela {{ window.year }} — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>&#128197; Escala {{ window.year }}</h1>
+    <span style="color:var(--text-muted);font-size:.9rem;">
+      Status:
+      {% if window.status == 'draft' %}Rascunho
+      {% elif window.status == 'open' %}Aberta para preenchimento
+      {% elif window.status == 'closed' %}Encerrada
+      {% elif window.status == 'published' %}Publicada{% endif %}
+    </span>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="{{ url_for('admin.windows') }}" class="btn btn-outline">← Janelas</a>
+    {% if window.status == 'closed' %}
+    <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
+      {{ csrf_token_field() }}
+      <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')">&#9889; Gerar escala</button>
+    </form>
+    {% elif window.status in ('published',) %}
+    <a href="{{ url_for('admin.schedule_review', id=window.id) }}" class="btn btn-primary">&#128197; Ver escala</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Situação dos médicos</h3>
+    <span style="color:var(--text-muted);font-size:.875rem;">
+      {{ confirmed_ids|length }} de {{ doctors|length }} confirmados
+    </span>
+  </div>
+  {% if doctors %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Médico</th>
+          <th>CRM</th>
+          <th>Rotinas</th>
+          <th>Restrições</th>
+          <th>Situação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doctors %}
+        {% set r_count = window.routines.filter_by(doctor_id=d.id).count() %}
+        {% set res_count = window.restrictions.filter_by(doctor_id=d.id).count() %}
+        <tr>
+          <td><strong>{{ d.name }}</strong></td>
+          <td>{{ d.crm or '—' }}</td>
+          <td>{{ r_count }}</td>
+          <td>{{ res_count }}</td>
+          <td>
+            {% if d.id in confirmed_ids %}
+              <span class="badge badge-medico">&#10003; Confirmado</span>
+            {% else %}
+              <span class="badge" style="background:#fef7e0;color:#7f5c00;">Pendente</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if d.id in confirmed_ids %}
+            <form method="POST" action="{{ url_for('admin.windows_unlock', window_id=window.id, doctor_id=d.id) }}">
+              {{ csrf_token_field() }}
+              <button class="btn btn-sm" style="border:1px solid var(--border);background:transparent;"
+                onclick="return confirm('Desbloquear {{ d.name }} para edição?')">Desbloquear</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <p>Nenhum médico ativo cadastrado.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

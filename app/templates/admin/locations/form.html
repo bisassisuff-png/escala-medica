@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('admin.locations') }}" class="btn btn-outline">← Voltar</a>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-body">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+        {% for e in form.name.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.scale_type.label(class="form-label") }}
+        {{ form.scale_type(class="form-control" + (" is-invalid" if form.scale_type.errors else ""), placeholder="Ex: Plantão 12h, Ambulatório…") }}
+        {% for e in form.scale_type.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.address.label(class="form-label") }}
+        {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows=3, placeholder="Endereço completo (opcional)") }}
+        {% for e in form.address.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">
+        <a href="{{ url_for('admin.locations') }}" class="btn btn-outline">Cancelar</a>
+        {{ form.submit(class="btn btn-primary") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

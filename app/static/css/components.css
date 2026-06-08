@@ -1,0 +1,120 @@
+/* ── Formulários ── */
+.form-group { margin-bottom: 1.1rem; }
+.form-label { display: block; font-size: .875rem; font-weight: 500; margin-bottom: .35rem; color: var(--text); }
+.form-control {
+  width: 100%;
+  padding: .6rem .85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .95rem;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
+.form-control.is-invalid { border-color: var(--danger); }
+.form-error { color: var(--danger); font-size: .8rem; margin-top: .25rem; }
+
+.form-check { display: flex; align-items: center; gap: .5rem; }
+.form-check input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.form-check label { font-size: .9rem; cursor: pointer; }
+
+/* ── Tabelas ── */
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+thead th {
+  padding: .75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+tbody td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--bg); }
+
+/* ── KPI cards ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow);
+}
+.kpi-card__label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: .35rem; }
+.kpi-card__value { font-size: 1.8rem; font-weight: 700; color: var(--text); line-height: 1; }
+.kpi-card__sub   { font-size: .8rem; color: var(--text-muted); margin-top: .3rem; }
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.empty-state__icon { font-size: 3rem; margin-bottom: .75rem; opacity: .4; }
+.empty-state p { margin-top: .5rem; }
+
+/* ── Grid de formulários (2 colunas → 1 em mobile) ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Loading state em botões ── */
+.btn[data-loading] {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn[data-loading]::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid currentColor;
+  border-color: rgba(255,255,255,.6) transparent rgba(255,255,255,.6) transparent;
+  border-radius: 50%;
+  animation: btn-spin .7s linear infinite;
+}
+.btn-outline[data-loading]::after {
+  border-color: var(--primary) transparent var(--primary) transparent;
+}
+@keyframes btn-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* ── Melhorias mobile para tabelas ── */
+@media (max-width: 600px) {
+  thead th, tbody td {
+    padding: .6rem .75rem;
+    font-size: .82rem;
+  }
+  .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .kpi-card__value { font-size: 1.5rem; }
+  .page-header h1 { font-size: 1.3rem; }
+}
+
+/* ── Melhor legibilidade dos badges e botões em touch ── */
+@media (max-width: 768px) {
+  .btn { padding: .55rem 1rem; min-height: 40px; }
+  .btn-sm { min-height: 34px; }
+}
+
+/* ── Pagination (futuro) ── */
+.pagination { display: flex; gap: .25rem; justify-content: flex-end; margin-top: 1rem; }
+.pagination a, .pagination span {
+  padding: .35rem .65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .85rem;
+  text-decoration: none;
+  color: var(--text);
+}
+.pagination .active { background: var(--primary); color: #fff; border-color: var(--primary); }

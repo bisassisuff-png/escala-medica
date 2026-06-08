@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Minhas Restrições — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>&#128683; Datas de Restrição — Escala {{ window.year }}</h1>
+</div>
+
+{% if confirmed %}
+<div class="alert alert-info">
+  Seus dados foram confirmados. Para fazer alterações, solicite ao administrador que desbloqueie seu acesso.
+</div>
+{% endif %}
+
+<div class="form-grid" style="align-items:start;">
+
+  {% if not confirmed %}
+  <div class="card">
+    <div class="card-header"><h3>Adicionar restrição</h3></div>
+    <div class="card-body">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+          {{ form.restricted_date.label(class="form-label") }}
+          {{ form.restricted_date(class="form-control" + (" is-invalid" if form.restricted_date.errors else ""), type="date") }}
+          {% for e in form.restricted_date.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+          {{ form.reason.label(class="form-label") }}
+          {{ form.reason(class="form-control", rows=2, placeholder="Viagem, procedimento médico… (opcional)") }}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Adicionar</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card" {% if confirmed %}style="grid-column:1/-1"{% endif %}>
+    <div class="card-header">
+      <h3>Restrições cadastradas</h3>
+      <span style="color:var(--text-muted);font-size:.875rem;">{{ restrictions|length }}</span>
+    </div>
+    {% if restrictions %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>Dia</th><th>Motivo</th>{% if not confirmed %}<th></th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for r in restrictions %}
+          <tr>
+            <td><strong>{{ r.restricted_date.strftime('%d/%m/%Y') }}</strong></td>
+            <td>{{ r.restricted_date.strftime('%A') }}</td>
+            <td>{{ r.reason or '—' }}</td>
+            {% if not confirmed %}
+            <td>
+              <form method="POST" action="{{ url_for('doctor.restrictions_delete', id=r.id) }}">
+                {{ csrf_token_field() }}
+                <button class="btn btn-sm btn-danger" onclick="return confirm('Remover esta restrição?')">✕</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body empty-state">
+      <p>Nenhuma data de restrição cadastrada.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% if not confirmed %}
+<div style="margin-top:1.25rem;text-align:right;">
+  <a href="{{ url_for('doctor.confirmation') }}" class="btn btn-primary">Continuar para confirmação →</a>
+</div>
+{% endif %}
+{% endblock %}

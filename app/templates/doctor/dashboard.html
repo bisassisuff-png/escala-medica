@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Meu Painel — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>&#127968; Olá, {{ current_user.name.split()[0] }}</h1>
+</div>
+
+<!-- Janela de preenchimento aberta -->
+{% if window %}
+<div class="card" style="margin-bottom:1.25rem;border-left:4px solid {% if confirmed %}var(--success){% else %}var(--warning){% endif %};">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <strong>Janela de preenchimento {{ window.year }} aberta</strong>
+      <p style="color:var(--text-muted);font-size:.875rem;margin-top:.25rem;">
+        {% if confirmed %}Você confirmou seus dados.{% else %}Informe suas rotinas e restrições.{% endif %}
+      </p>
+    </div>
+    {% if not confirmed %}
+    <a href="{{ url_for('doctor.confirmation') }}" class="btn btn-primary">Ver resumo e confirmar</a>
+    {% else %}
+    <span class="badge badge-medico" style="padding:.5rem 1rem;font-size:.9rem;">&#10003; Confirmado</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpi-grid" style="margin-bottom:1.5rem;">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Rotinas cadastradas</div>
+    <div class="kpi-card__value">{{ routines_count }}</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('doctor.routines') }}">Gerenciar →</a></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Datas de restrição</div>
+    <div class="kpi-card__value">{{ restrictions_count }}</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('doctor.restrictions') }}">Gerenciar →</a></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- KPIs da escala publicada -->
+{% if published_window %}
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
+  <h2 style="font-size:1.1rem;">&#128202; Meus plantões — {{ published_window.year }}</h2>
+  <form method="GET" style="display:flex;gap:.35rem;flex-wrap:wrap;">
+    {% for m in range(1,13) %}
+    <a href="{{ url_for('doctor.dashboard', month=m) }}"
+       class="btn btn-sm {% if m == month %}btn-primary{% else %}btn-outline{% endif %}">
+      {{ month_names[m] }}
+    </a>
+    {% endfor %}
+  </form>
+</div>
+
+<div class="kpi-grid" style="margin-bottom:1.25rem;">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Plantões em {{ month_names[month] }}</div>
+    <div class="kpi-card__value">{{ month_stats.total }}</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('doctor.schedule', month=month) }}">Ver escala →</a></div>
+  </div>
+  {% for loc, count in month_stats.by_location %}
+  {% if loc %}
+  <div class="kpi-card">
+    <div class="kpi-card__label">{{ loc.name }}</div>
+    <div class="kpi-card__value">{{ count }}</div>
+    <div class="kpi-card__sub">plantões</div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% if month_stats.upcoming %}
+<div class="card">
+  <div class="card-header"><h3>Próximos plantões</h3></div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Data</th><th>Dia</th><th>Local</th><th>Tipo</th></tr></thead>
+      <tbody>
+        {% for e in month_stats.upcoming %}
+        <tr>
+          <td><strong>{{ e.date.strftime('%d/%m/%Y') }}</strong></td>
+          <td>{{ e.date.strftime('%A') }}</td>
+          <td>{{ month_stats.locations[e.location_id].name if e.location_id in month_stats.locations else '—' }}</td>
+          <td>{{ e.scale_type or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+{% if not window %}
+<div class="card">
+  <div class="card-body empty-state">
+    <div class="empty-state__icon">&#128197;</div>
+    <h3>Sem escala disponível</h3>
+    <p>Aguarde o administrador publicar a escala.</p>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

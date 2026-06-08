@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Escala {{ window.year }} — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>&#128197; Escala {{ window.year }}</h1>
+    <span style="color:var(--text-muted);font-size:.875rem;">
+      {% if window.status == 'published' %}<span class="badge badge-medico">Publicada</span>
+      {% else %}<span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Rascunho</span>{% endif %}
+    </span>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <a href="{{ url_for('admin.windows_detail', id=window.id) }}" class="btn btn-outline">← Janela</a>
+    {% if window.status != 'published' and stats.total > 0 %}
+    <form method="POST" action="{{ url_for('admin.schedule_approve', id=window.id) }}">
+      {{ csrf_token_field() }}
+      <button class="btn btn-primary" onclick="return confirm('Publicar a escala {{ window.year }}? Médicos poderão visualizá-la.')">
+        &#10003; Publicar escala
+      </button>
+    </form>
+    {% endif %}
+    {% if window.status == 'closed' %}
+    <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
+      {{ csrf_token_field() }}
+      <button class="btn btn-outline" onclick="return confirm('Regerar a escala? As entradas anteriores serão substituídas.')">
+        &#128260; Regerar
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="kpi-grid" style="margin-bottom:1.25rem;">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Total de slots</div>
+    <div class="kpi-card__value">{{ stats.total }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Cobertos por rotina</div>
+    <div class="kpi-card__value" style="color:var(--success);">{{ stats.routine }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Distribuídos</div>
+    <div class="kpi-card__value" style="color:var(--primary);">{{ stats.generated }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Sem cobertura (mês)</div>
+    <div class="kpi-card__value" style="color:{% if uncovered %}var(--danger){% else %}var(--success){% endif %};">
+      {{ uncovered|length }}
+    </div>
+  </div>
+</div>
+
+<!-- Navegação por mês -->
+<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+  {% for m in range(1, 13) %}
+  <a href="{{ url_for('admin.schedule_review', id=window.id, month=m) }}"
+     class="btn btn-sm {% if m == month %}btn-primary{% else %}btn-outline{% endif %}">
+    {{ month_names[m] }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Slots sem cobertura -->
+{% if uncovered %}
+<div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--danger);">
+  <div class="card-header">
+    <h3 style="color:var(--danger);">&#9888; Slots sem cobertura em {{ month_names[month] }} ({{ uncovered|length }})</h3>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Data</th><th>Local</th><th>Tipo de escala</th></tr></thead>
+      <tbody>
+        {% for slot in uncovered %}
+        <tr>
+          <td>{{ slot.date.strftime('%d/%m/%Y (%a)') }}</td>
+          <td>{{ locations[slot.location_id].name if slot.location_id in locations else '—' }}</td>
+          <td>{{ slot.scale_type or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Escala do mês -->
+<div class="card">
+  <div class="card-header">
+    <h3>{{ month_names[month] }} / {{ window.year }}</h3>
+    <span style="color:var(--text-muted);font-size:.875rem;">{{ entries|length }} entrada(s)</span>
+  </div>
+  {% if entries %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Dia</th><th>Local</th><th>Tipo</th><th>Médico</th><th>Origem</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(cur_date=None) %}
+        {% for e in entries %}
+        {% if e.date != ns.cur_date %}{% set ns.cur_date = e.date %}
+        <tr style="background:var(--bg);">
+          <td colspan="7" style="font-weight:600;font-size:.8rem;color:var(--text-muted);padding:.4rem 1rem;">
+            {{ e.date.strftime('%A, %d de %B') }}
+          </td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td>{{ e.date.strftime('%d/%m') }}</td>
+          <td style="color:var(--text-muted);">{{ e.date.strftime('%a') }}</td>
+          <td>{{ locations[e.location_id].name if e.location_id in locations else '—' }}</td>
+          <td>{{ e.scale_type or '—' }}</td>
+          <td><strong>{{ doctors[e.doctor_id].name if e.doctor_id in doctors else '—' }}</strong></td>
+          <td>
+            {% if e.source == 'routine' %}
+              <span class="badge badge-medico">Rotina</span>
+            {% elif e.source == 'generated' %}
+              <span class="badge badge-admin">Gerado</span>
+            {% else %}
+              <span class="badge" style="background:#f1f3f4;">Manual</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if e.status == 'published' %}
+              <span class="badge badge-medico">Publicado</span>
+            {% else %}
+              <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Rascunho</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <p>Nenhuma entrada para este mês.</p>
+    {% if window.status == 'closed' %}
+    <p style="margin-top:.5rem;"><a href="{{ url_for('admin.schedule_generate', id=window.id) }}">Gerar escala</a> para ver os dados.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

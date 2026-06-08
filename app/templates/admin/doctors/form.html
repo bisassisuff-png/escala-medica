@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ title }}</h1>
+  <a href="{{ url_for('admin.doctors') }}" class="btn btn-outline">← Voltar</a>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-body">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+        {% for e in form.name.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          {{ form.crm.label(class="form-label") }}
+          {{ form.crm(class="form-control" + (" is-invalid" if form.crm.errors else ""), placeholder="Ex: 123456/SP") }}
+          {% for e in form.crm.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="form-group">
+          {{ form.login.label(class="form-label") }}
+          {{ form.login(class="form-control" + (" is-invalid" if form.login.errors else "")) }}
+          {% for e in form.login.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), type="email") }}
+        {% for e in form.email.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.password.label(class="form-label") }}
+        {% if doctor %}<small style="color:var(--text-muted);"> — deixe em branco para manter a atual</small>{% endif %}
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Mínimo 6 caracteres") }}
+        {% for e in form.password.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">
+        <a href="{{ url_for('admin.doctors') }}" class="btn btn-outline">Cancelar</a>
+        {{ form.submit(class="btn btn-primary") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

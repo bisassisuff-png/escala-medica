@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Médicos — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Médicos</h1>
+  <a href="{{ url_for('admin.doctors_new') }}" class="btn btn-primary">+ Novo médico</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <form method="GET" style="display:flex;gap:.5rem;flex:1;max-width:360px;">
+      <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nome ou CRM…" style="flex:1;">
+      <button type="submit" class="btn btn-outline btn-sm">Buscar</button>
+      {% if q %}<a href="{{ url_for('admin.doctors') }}" class="btn btn-sm" style="border:1px solid var(--border);">✕</a>{% endif %}
+    </form>
+    <span style="color:var(--text-muted);font-size:.875rem;">{{ doctors|length }} médico(s)</span>
+  </div>
+
+  {% if doctors %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>CRM</th>
+          <th>Login</th>
+          <th>E-mail</th>
+          <th>Situação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doctors %}
+        <tr>
+          <td><strong>{{ d.name }}</strong></td>
+          <td>{{ d.crm or '—' }}</td>
+          <td><code>{{ d.login }}</code></td>
+          <td>{{ d.email }}</td>
+          <td>
+            {% if d.active %}
+              <span class="badge badge-medico">Ativo</span>
+            {% else %}
+              <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Inativo</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            <a href="{{ url_for('admin.doctors_edit', id=d.id) }}" class="btn btn-sm btn-outline">Editar</a>
+            <form method="POST" action="{{ url_for('admin.doctors_toggle', id=d.id) }}" style="display:inline;">
+              {{ csrf_token_field() }}
+              <button type="submit" class="btn btn-sm" style="border:1px solid var(--border);background:transparent;"
+                onclick="return confirm('{{ 'Desativar' if d.active else 'Ativar' }} este médico?')">
+                {{ 'Desativar' if d.active else 'Ativar' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <div class="empty-state__icon">👨‍⚕️</div>
+    <h3>Nenhum médico encontrado</h3>
+    {% if q %}<p>Tente outro termo de busca.</p>{% else %}<p>Cadastre o primeiro médico.</p>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

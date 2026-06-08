@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Locais — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Locais de Atendimento</h1>
+  <a href="{{ url_for('admin.locations_new') }}" class="btn btn-primary">+ Novo local</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <form method="GET" style="display:flex;gap:.5rem;flex:1;max-width:360px;">
+      <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nome…" style="flex:1;">
+      <button type="submit" class="btn btn-outline btn-sm">Buscar</button>
+      {% if q %}<a href="{{ url_for('admin.locations') }}" class="btn btn-sm" style="border:1px solid var(--border);">✕</a>{% endif %}
+    </form>
+    <span style="color:var(--text-muted);font-size:.875rem;">{{ locations|length }} local(is)</span>
+  </div>
+
+  {% if locations %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo de escala</th>
+          <th>Endereço</th>
+          <th>Situação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loc in locations %}
+        <tr>
+          <td><strong>{{ loc.name }}</strong></td>
+          <td>{{ loc.scale_type or '—' }}</td>
+          <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ loc.address or '—' }}</td>
+          <td>
+            {% if loc.active %}
+              <span class="badge badge-medico">Ativo</span>
+            {% else %}
+              <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Inativo</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            <a href="{{ url_for('admin.locations_edit', id=loc.id) }}" class="btn btn-sm btn-outline">Editar</a>
+            <form method="POST" action="{{ url_for('admin.locations_toggle', id=loc.id) }}" style="display:inline;">
+              {{ csrf_token_field() }}
+              <button type="submit" class="btn btn-sm" style="border:1px solid var(--border);background:transparent;"
+                onclick="return confirm('{{ 'Desativar' if loc.active else 'Ativar' }} este local?')">
+                {{ 'Desativar' if loc.active else 'Ativar' }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <div class="empty-state__icon">🏥</div>
+    <h3>Nenhum local encontrado</h3>
+    {% if q %}<p>Tente outro termo de busca.</p>{% else %}<p>Cadastre o primeiro local de atendimento.</p>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

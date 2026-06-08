@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Escala Médica{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <button class="topbar__toggle" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+    <a href="/" class="topbar__brand">&#128197; Escala Médica</a>
+  </div>
+  <div class="topbar__user">
+    <div class="avatar">{{ current_user.name[0].upper() }}</div>
+    <span>{{ current_user.name.split()[0] }}</span>
+    <span class="badge badge-{{ current_user.role }}">{{ current_user.role }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);margin-left:.5rem;">Sair</a>
+  </div>
+</header>
+
+<div class="page-wrapper">
+  <nav class="sidebar" id="sidebar">
+    {% if current_user.is_admin %}
+      <span class="sidebar__section">Administração</span>
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar__item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">&#127968; Dashboard</a>
+      <span class="sidebar__section">Cadastros</span>
+      <a href="{{ url_for('admin.doctors') }}" class="sidebar__item {% if 'doctors' in request.endpoint %}active{% endif %}">&#128105;&#8205;&#9877; Médicos</a>
+      <a href="{{ url_for('admin.locations') }}" class="sidebar__item {% if 'locations' in request.endpoint %}active{% endif %}">&#127973; Locais</a>
+      <a href="{{ url_for('admin.links') }}" class="sidebar__item {% if 'links' in request.endpoint %}active{% endif %}">&#128279; Vínculos</a>
+      <span class="sidebar__section">Escala</span>
+      <a href="{{ url_for('admin.windows') }}" class="sidebar__item {% if 'windows' in request.endpoint %}active{% endif %}">&#128197; Janelas</a>
+      <a href="{{ url_for('admin.swaps') }}" class="sidebar__item {% if 'swaps' in request.endpoint %}active{% endif %}">&#8646; Trocas</a>
+      <a href="{{ url_for('admin.kpis') }}" class="sidebar__item {% if request.endpoint == 'admin.kpis' %}active{% endif %}">&#128202; KPIs</a>
+    {% else %}
+      <span class="sidebar__section">Médico</span>
+      <a href="{{ url_for('doctor.dashboard') }}" class="sidebar__item {% if request.endpoint == 'doctor.dashboard' %}active{% endif %}">&#127968; Meu Painel</a>
+      <a href="{{ url_for('doctor.routines') }}" class="sidebar__item {% if request.endpoint == 'doctor.routines' %}active{% endif %}">&#128197; Minhas Rotinas</a>
+      <a href="{{ url_for('doctor.restrictions') }}" class="sidebar__item {% if request.endpoint == 'doctor.restrictions' %}active{% endif %}">&#128683; Restrições</a>
+      <a href="{{ url_for('doctor.confirmation') }}" class="sidebar__item {% if request.endpoint == 'doctor.confirmation' %}active{% endif %}">&#10003; Confirmar</a>
+      <a href="{{ url_for('doctor.schedule') }}" class="sidebar__item {% if request.endpoint == 'doctor.schedule' %}active{% endif %}">&#128197; Minha Escala</a>
+      <a href="{{ url_for('doctor.swaps') }}" class="sidebar__item {% if 'swaps' in request.endpoint %}active{% endif %}" style="position:relative;">
+        &#8646; Trocas
+        <span id="swap-badge" style="display:none;background:var(--danger);color:#fff;border-radius:99px;font-size:.7rem;padding:.1rem .45rem;margin-left:.4rem;font-weight:700;min-width:18px;align-items:center;justify-content:center;">0</span>
+      </a>
+    {% endif %}
+  </nav>
+
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+{% else %}
+  {% block content_unauthenticated %}{% endblock %}
+{% endif %}
+
+{% if current_user.is_authenticated and current_user.is_medico %}
+<script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script>
+{% endif %}
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && !sidebar.contains(e.target) && !e.target.closest('.topbar__toggle')) {
+    sidebar.classList.remove('open');
+  }
+});
+
+// Loading state automático para botões submit dentro de formulários
+document.addEventListener('submit', function(e) {
+  const form = e.target;
+  const btn = form.querySelector('button[type=submit]:not([data-no-loading])');
+  if (btn) btn.setAttribute('data-loading', '1');
+});
+
+// Auto-fechar alertas após 5 segundos
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.alert').forEach(function(alert) {
+    setTimeout(function() {
+      alert.style.transition = 'opacity .4s';
+      alert.style.opacity = '0';
+      setTimeout(function() { alert.remove(); }, 400);
+    }, 5000);
+  });
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

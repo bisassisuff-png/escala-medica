@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Admin — Escala Médica{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>&#127968; Dashboard</h1>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Médicos ativos</div>
+    <div class="kpi-card__value">{{ total_doctors }}</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('admin.doctors') }}">Gerenciar →</a></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Locais ativos</div>
+    <div class="kpi-card__value">{{ total_locations }}</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('admin.locations') }}">Gerenciar →</a></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Trocas pendentes</div>
+    <div class="kpi-card__value">{{ total_swaps }}</div>
+    <div class="kpi-card__sub">Disponível na Etapa 6</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body empty-state">
+    <div class="empty-state__icon">&#128197;</div>
+    <h3>Escala não configurada</h3>
+    <p>Cadastre médicos e locais para começar.<br>A geração da escala estará disponível na Etapa 5.</p>
+  </div>
+</div>
+{% endblock %}
