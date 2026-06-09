@@ -13,7 +13,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>&#128202; Dashboard KPIs</h1>
+  <h1>Dashboard KPIs</h1>
 </div>
 
 <!-- Filtros -->
@@ -73,7 +73,7 @@
 <!-- Alertas -->
 {% if data.overloaded or data.underloaded %}
 <div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--warning);">
-  <div class="card-header"><h3>&#9888; Alertas de distribuição</h3></div>
+  <div class="card-header"><h3><i class="bi bi-exclamation-triangle" style="color:var(--warning);"></i> Alertas de distribuição</h3></div>
   <div class="card-body" style="display:flex;gap:2rem;flex-wrap:wrap;">
     {% if data.overloaded %}
     <div>
@@ -132,7 +132,7 @@
 
 <!-- Ranking -->
 <div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header"><h3>&#127942; Ranking de plantões — {{ month_names[month] }}/{{ window.year }}</h3></div>
+  <div class="card-header"><h3><i class="bi bi-trophy" style="color:var(--warning);"></i> Ranking de plantões — {{ month_names[month] }}/{{ window.year }}</h3></div>
   {% if data.ranking %}
   <div class="table-wrapper">
     <table>
@@ -160,7 +160,7 @@
 
 <!-- Taxa de ocupação por local -->
 <div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header"><h3>&#127973; Ocupação por local — {{ month_names[month] }}</h3></div>
+  <div class="card-header"><h3><i class="bi bi-hospital"></i> Ocupação por local — {{ month_names[month] }}</h3></div>
   <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap;">
     {% for lid, loc in data.locations.items() %}
     {% set filled = data.loc_counts.get(lid, 0) %}
@@ -180,7 +180,7 @@
 <!-- Médicos com mais restrições -->
 {% if data.restr_rows %}
 <div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header"><h3>&#128683; Médicos com mais restrições (ano)</h3></div>
+  <div class="card-header"><h3><i class="bi bi-slash-circle"></i> Médicos com mais restrições (ano)</h3></div>
   <div class="table-wrapper">
     <table>
       <thead><tr><th>Médico</th><th>Restrições</th></tr></thead>

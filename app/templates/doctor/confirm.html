@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>&#10003; Confirmar Dados — Escala {{ window.year }}</h1>
+  <h1>Confirmar Dados — Escala {{ window.year }}</h1>
 </div>
 
 {% if confirmed %}
@@ -74,7 +74,7 @@
         <form method="POST" action="{{ url_for('doctor.confirm') }}">
           {{ csrf_token_field() }}
           <button class="btn btn-primary" onclick="return confirm('Confirmar seus dados? Não será possível alterar sem solicitar ao administrador.')">
-            &#10003; Confirmar meus dados
+            <i class="bi bi-check2-circle"></i> Confirmar meus dados
           </button>
         </form>
       </div>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>&#128197; Escala {{ window.year }}</h1>
+    <h1>Escala {{ window.year }}</h1>
     <span style="color:var(--text-muted);font-size:.875rem;">
       {% if window.status == 'published' %}<span class="badge badge-medico">Publicada</span>
       {% else %}<span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Rascunho</span>{% endif %}
@@ -16,7 +16,7 @@
     <form method="POST" action="{{ url_for('admin.schedule_approve', id=window.id) }}">
       {{ csrf_token_field() }}
       <button class="btn btn-primary" onclick="return confirm('Publicar a escala {{ window.year }}? Médicos poderão visualizá-la.')">
-        &#10003; Publicar escala
+        <i class="bi bi-check2"></i> Publicar escala
       </button>
     </form>
     {% endif %}
@@ -24,7 +24,7 @@
     <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
       {{ csrf_token_field() }}
       <button class="btn btn-outline" onclick="return confirm('Regerar a escala? As entradas anteriores serão substituídas.')">
-        &#128260; Regerar
+        <i class="bi bi-arrow-repeat"></i> Regerar
       </button>
     </form>
     {% endif %}
@@ -67,7 +67,7 @@
 {% if uncovered %}
 <div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--danger);">
   <div class="card-header">
-    <h3 style="color:var(--danger);">&#9888; Slots sem cobertura em {{ month_names[month] }} ({{ uncovered|length }})</h3>
+    <h3 style="color:var(--danger);"><i class="bi bi-exclamation-triangle"></i> Slots sem cobertura em {{ month_names[month] }} ({{ uncovered|length }})</h3>
   </div>
   <div class="table-wrapper">
     <table>

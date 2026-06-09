@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>&#128197; Janelas de Preenchimento</h1>
+  <h1>Janelas de Preenchimento</h1>
   <a href="{{ url_for('admin.windows_new') }}" class="btn btn-primary">+ Nova janela</a>
 </div>
 
@@ -40,10 +40,10 @@
       </div>
     </div>
     <div class="card-body" style="display:flex;gap:2rem;flex-wrap:wrap;font-size:.9rem;color:var(--text-muted);">
-      <span>&#128197; Ano: <strong style="color:var(--text);">{{ w.year }}</strong></span>
-      <span>&#128275; Abertura: <strong style="color:var(--text);">{{ w.open_at.strftime('%d/%m/%Y %H:%M') if w.open_at else '—' }}</strong></span>
-      <span>&#128274; Encerramento: <strong style="color:var(--text);">{{ w.close_at.strftime('%d/%m/%Y %H:%M') if w.close_at else '—' }}</strong></span>
-      <span>&#128100; Criada por: <strong style="color:var(--text);">{{ w.creator.name }}</strong></span>
+      <span><i class="bi bi-calendar3" style="color:var(--text-muted);"></i> Ano: <strong style="color:var(--text);">{{ w.year }}</strong></span>
+      <span><i class="bi bi-unlock" style="color:var(--text-muted);"></i> Abertura: <strong style="color:var(--text);">{{ w.open_at.strftime('%d/%m/%Y %H:%M') if w.open_at else '—' }}</strong></span>
+      <span><i class="bi bi-lock" style="color:var(--text-muted);"></i> Encerramento: <strong style="color:var(--text);">{{ w.close_at.strftime('%d/%m/%Y %H:%M') if w.close_at else '—' }}</strong></span>
+      <span><i class="bi bi-person" style="color:var(--text-muted);"></i> Criada por: <strong style="color:var(--text);">{{ w.creator.name }}</strong></span>
     </div>
   </div>
   {% endfor %}
@@ -51,7 +51,7 @@
 {% else %}
 <div class="card">
   <div class="card-body empty-state">
-    <div class="empty-state__icon">&#128197;</div>
+    <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
     <h3>Nenhuma janela criada</h3>
     <p>Crie a primeira janela de preenchimento anual.</p>
   </div>

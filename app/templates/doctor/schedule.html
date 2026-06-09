@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>&#128197; Minha Escala {{ window.year }}</h1>
+  <h1>Minha Escala {{ window.year }}</h1>
 </div>
 
 <!-- Navegação por mês -->
@@ -43,7 +43,7 @@
                 {{ csrf_token_field() }}
                 <button class="btn btn-sm btn-outline"
                   onclick="return confirm('Solicitar troca para {{ e.date.strftime('%d/%m/%Y') }}?')">
-                  &#8646; Trocar
+                  <i class="bi bi-arrow-left-right"></i> Trocar
                 </button>
               </form>
             {% endif %}
@@ -55,7 +55,7 @@
   </div>
   {% else %}
   <div class="card-body empty-state">
-    <div class="empty-state__icon">&#128197;</div>
+    <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
     <h3>Nenhum plantão em {{ month_names[month] }}</h3>
     <p>Você não tem escalas programadas para este mês.</p>
   </div>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>&#128197; Escala {{ window.year }}</h1>
+    <h1>Escala {{ window.year }}</h1>
     <span style="color:var(--text-muted);font-size:.9rem;">
       Status:
       {% if window.status == 'draft' %}Rascunho
@@ -18,10 +18,10 @@
     {% if window.status == 'closed' %}
     <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
       {{ csrf_token_field() }}
-      <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')">&#9889; Gerar escala</button>
+      <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')"><i class="bi bi-lightning"></i> Gerar escala</button>
     </form>
     {% elif window.status in ('published',) %}
-    <a href="{{ url_for('admin.schedule_review', id=window.id) }}" class="btn btn-primary">&#128197; Ver escala</a>
+    <a href="{{ url_for('admin.schedule_review', id=window.id) }}" class="btn btn-primary"><i class="bi bi-calendar2-check"></i> Ver escala</a>
     {% endif %}
   </div>
 </div>
@@ -57,7 +57,7 @@
           <td>{{ res_count }}</td>
           <td>
             {% if d.id in confirmed_ids %}
-              <span class="badge badge-medico">&#10003; Confirmado</span>
+              <span class="badge badge-medico"><i class="bi bi-check2"></i> Confirmado</span>
             {% else %}
               <span class="badge" style="background:#fef7e0;color:#7f5c00;">Pendente</span>
             {% endif %}

@@ -12,7 +12,7 @@
     <form method="GET" style="display:flex;gap:.5rem;flex:1;max-width:360px;">
       <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nome…" style="flex:1;">
       <button type="submit" class="btn btn-outline btn-sm">Buscar</button>
-      {% if q %}<a href="{{ url_for('admin.locations') }}" class="btn btn-sm" style="border:1px solid var(--border);">✕</a>{% endif %}
+      {% if q %}<a href="{{ url_for('admin.locations') }}" class="btn btn-sm btn-outline">×</a>{% endif %}
     </form>
     <span style="color:var(--text-muted);font-size:.875rem;">{{ locations|length }} local(is)</span>
   </div>
@@ -59,7 +59,7 @@
   </div>
   {% else %}
   <div class="card-body empty-state">
-    <div class="empty-state__icon">🏥</div>
+    <div class="empty-state__icon"><i class="bi bi-hospital"></i></div>
     <h3>Nenhum local encontrado</h3>
     {% if q %}<p>Tente outro termo de busca.</p>{% else %}<p>Cadastre o primeiro local de atendimento.</p>{% endif %}
   </div>

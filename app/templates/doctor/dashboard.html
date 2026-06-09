@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>&#127968; Olá, {{ current_user.name.split()[0] }}</h1>
+  <h1>Olá, {{ current_user.name.split()[0] }}</h1>
 </div>
 
 <!-- Janela de preenchimento aberta -->
@@ -19,7 +19,7 @@
     {% if not confirmed %}
     <a href="{{ url_for('doctor.confirmation') }}" class="btn btn-primary">Ver resumo e confirmar</a>
     {% else %}
-    <span class="badge badge-medico" style="padding:.5rem 1rem;font-size:.9rem;">&#10003; Confirmado</span>
+    <span class="badge badge-medico" style="padding:.5rem 1rem;font-size:.9rem;"><i class="bi bi-check2"></i> Confirmado</span>
     {% endif %}
   </div>
 </div>
@@ -41,7 +41,7 @@
 <!-- KPIs da escala publicada -->
 {% if published_window %}
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
-  <h2 style="font-size:1.1rem;">&#128202; Meus plantões — {{ published_window.year }}</h2>
+  <h2 style="font-size:1.1rem;">Meus plantões — {{ published_window.year }}</h2>
   <form method="GET" style="display:flex;gap:.35rem;flex-wrap:wrap;">
     {% for m in range(1,13) %}
     <a href="{{ url_for('doctor.dashboard', month=m) }}"
@@ -94,7 +94,7 @@
 {% if not window %}
 <div class="card">
   <div class="card-body empty-state">
-    <div class="empty-state__icon">&#128197;</div>
+    <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
     <h3>Sem escala disponível</h3>
     <p>Aguarde o administrador publicar a escala.</p>
   </div>
