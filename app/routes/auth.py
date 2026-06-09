@@ -9,7 +9,7 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return _redirect_by_role(current_user)
+        return redirect(_redirect_by_role(current_user))
 
     form = LoginForm()
     if form.validate_on_submit():
