@@ -4,55 +4,110 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Escala Médica{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
 
 {% if current_user.is_authenticated %}
-<header class="topbar">
-  <div style="display:flex;align-items:center;gap:.75rem;">
-    <button class="topbar__toggle" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
-    <a href="/" class="topbar__brand">&#128197; Escala Médica</a>
+
+<header class="app-navbar">
+  <div class="app-navbar__left">
+    <button class="app-navbar__toggle" id="sidebarToggle" aria-label="Menu">
+      <i class="bi bi-list"></i>
+    </button>
+    <a href="/" class="app-navbar__brand">
+      <i class="bi bi-calendar2-heart"></i> Escala Médica
+    </a>
   </div>
-  <div class="topbar__user">
-    <div class="avatar">{{ current_user.name[0].upper() }}</div>
-    <span>{{ current_user.name.split()[0] }}</span>
-    <span class="badge badge-{{ current_user.role }}">{{ current_user.role }}</span>
-    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5);margin-left:.5rem;">Sair</a>
+  <div class="app-navbar__right">
+    <div class="app-avatar">{{ current_user.name[0].upper() }}</div>
+    <span class="name">{{ current_user.name.split()[0] }}</span>
+    {% if current_user.is_admin %}
+      <span class="badge badge-admin">Admin</span>
+    {% else %}
+      <span class="badge badge-medico">Médico</span>
+    {% endif %}
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm" style="margin-left:.25rem;">
+      <i class="bi bi-box-arrow-right"></i> Sair
+    </a>
   </div>
 </header>
 
-<div class="page-wrapper">
-  <nav class="sidebar" id="sidebar">
+<div class="app-layout">
+
+  <nav class="app-sidebar" id="sidebar">
     {% if current_user.is_admin %}
-      <span class="sidebar__section">Administração</span>
-      <a href="{{ url_for('admin.dashboard') }}" class="sidebar__item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">&#127968; Dashboard</a>
-      <span class="sidebar__section">Cadastros</span>
-      <a href="{{ url_for('admin.doctors') }}" class="sidebar__item {% if 'doctors' in request.endpoint %}active{% endif %}">&#128105;&#8205;&#9877; Médicos</a>
-      <a href="{{ url_for('admin.locations') }}" class="sidebar__item {% if 'locations' in request.endpoint %}active{% endif %}">&#127973; Locais</a>
-      <a href="{{ url_for('admin.links') }}" class="sidebar__item {% if 'links' in request.endpoint %}active{% endif %}">&#128279; Vínculos</a>
-      <span class="sidebar__section">Escala</span>
-      <a href="{{ url_for('admin.windows') }}" class="sidebar__item {% if 'windows' in request.endpoint %}active{% endif %}">&#128197; Janelas</a>
-      <a href="{{ url_for('admin.swaps') }}" class="sidebar__item {% if 'swaps' in request.endpoint %}active{% endif %}">&#8646; Trocas</a>
-      <a href="{{ url_for('admin.kpis') }}" class="sidebar__item {% if request.endpoint == 'admin.kpis' %}active{% endif %}">&#128202; KPIs</a>
+      <div class="sidebar-section">Principal</div>
+      <a href="{{ url_for('admin.dashboard') }}"
+         class="sidebar-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </a>
+
+      <div class="sidebar-section">Cadastros</div>
+      <a href="{{ url_for('admin.doctors') }}"
+         class="sidebar-item {% if 'doctors' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-person-lines-fill"></i> Médicos
+      </a>
+      <a href="{{ url_for('admin.locations') }}"
+         class="sidebar-item {% if 'locations' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-hospital"></i> Locais
+      </a>
+      <a href="{{ url_for('admin.links') }}"
+         class="sidebar-item {% if 'links' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-link-45deg"></i> Vínculos
+      </a>
+
+      <div class="sidebar-section">Escala</div>
+      <a href="{{ url_for('admin.windows') }}"
+         class="sidebar-item {% if 'windows' in request.endpoint or 'schedule' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-calendar3"></i> Janelas
+      </a>
+      <a href="{{ url_for('admin.swaps') }}"
+         class="sidebar-item {% if request.endpoint == 'admin.swaps' %}active{% endif %}">
+        <i class="bi bi-arrow-left-right"></i> Trocas
+      </a>
+      <a href="{{ url_for('admin.kpis') }}"
+         class="sidebar-item {% if request.endpoint == 'admin.kpis' %}active{% endif %}">
+        <i class="bi bi-bar-chart-line"></i> KPIs
+      </a>
+
     {% else %}
-      <span class="sidebar__section">Médico</span>
-      <a href="{{ url_for('doctor.dashboard') }}" class="sidebar__item {% if request.endpoint == 'doctor.dashboard' %}active{% endif %}">&#127968; Meu Painel</a>
-      <a href="{{ url_for('doctor.routines') }}" class="sidebar__item {% if request.endpoint == 'doctor.routines' %}active{% endif %}">&#128197; Minhas Rotinas</a>
-      <a href="{{ url_for('doctor.restrictions') }}" class="sidebar__item {% if request.endpoint == 'doctor.restrictions' %}active{% endif %}">&#128683; Restrições</a>
-      <a href="{{ url_for('doctor.confirmation') }}" class="sidebar__item {% if request.endpoint == 'doctor.confirmation' %}active{% endif %}">&#10003; Confirmar</a>
-      <a href="{{ url_for('doctor.schedule') }}" class="sidebar__item {% if request.endpoint == 'doctor.schedule' %}active{% endif %}">&#128197; Minha Escala</a>
-      <a href="{{ url_for('doctor.swaps') }}" class="sidebar__item {% if 'swaps' in request.endpoint %}active{% endif %}" style="position:relative;">
-        &#8646; Trocas
-        <span id="swap-badge" style="display:none;background:var(--danger);color:#fff;border-radius:99px;font-size:.7rem;padding:.1rem .45rem;margin-left:.4rem;font-weight:700;min-width:18px;align-items:center;justify-content:center;">0</span>
+      <div class="sidebar-section">Minha Área</div>
+      <a href="{{ url_for('doctor.dashboard') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.dashboard' %}active{% endif %}">
+        <i class="bi bi-grid-1x2"></i> Painel
+      </a>
+      <a href="{{ url_for('doctor.routines') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.routines' %}active{% endif %}">
+        <i class="bi bi-calendar3"></i> Rotinas
+      </a>
+      <a href="{{ url_for('doctor.restrictions') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.restrictions' %}active{% endif %}">
+        <i class="bi bi-slash-circle"></i> Restrições
+      </a>
+      <a href="{{ url_for('doctor.confirmation') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.confirmation' %}active{% endif %}">
+        <i class="bi bi-check2-circle"></i> Confirmar
+      </a>
+      <a href="{{ url_for('doctor.schedule') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.schedule' %}active{% endif %}">
+        <i class="bi bi-calendar2-check"></i> Minha Escala
+      </a>
+      <a href="{{ url_for('doctor.swaps') }}"
+         class="sidebar-item {% if 'swaps' in request.endpoint and 'doctor' in request.endpoint %}active{% endif %}"
+         style="position:relative;">
+        <i class="bi bi-arrow-left-right"></i> Trocas
+        <span id="swap-badge" style="display:none;background:var(--danger);color:#fff;border-radius:99px;font-size:.65rem;padding:.15rem .45rem;margin-left:auto;font-weight:700;">0</span>
       </a>
     {% endif %}
   </nav>
 
-  <main class="main-content">
+  <main class="app-main">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}
         <div class="alert alert-{{ category }}">{{ message }}</div>
@@ -60,7 +115,8 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
-</div>
+
+</div><!-- /.app-layout -->
 
 {% else %}
   {% block content_unauthenticated %}{% endblock %}
@@ -69,31 +125,30 @@
 {% if current_user.is_authenticated and current_user.is_medico %}
 <script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script>
 {% endif %}
-<script>
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-}
-document.addEventListener('click', function(e) {
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar && !sidebar.contains(e.target) && !e.target.closest('.topbar__toggle')) {
-    sidebar.classList.remove('open');
-  }
-});
 
-// Loading state automático para botões submit dentro de formulários
-document.addEventListener('submit', function(e) {
-  const form = e.target;
-  const btn = form.querySelector('button[type=submit]:not([data-no-loading])');
+<script>
+(function() {
+  const toggle = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('sidebar');
+  if (!toggle || !sidebar) return;
+  toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+  document.addEventListener('click', e => {
+    if (!sidebar.contains(e.target) && !toggle.contains(e.target))
+      sidebar.classList.remove('open');
+  });
+})();
+
+document.addEventListener('submit', e => {
+  const btn = e.target.querySelector('button[type=submit]:not([data-no-loading])');
   if (btn) btn.setAttribute('data-loading', '1');
 });
 
-// Auto-fechar alertas após 5 segundos
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.alert').forEach(function(alert) {
-    setTimeout(function() {
-      alert.style.transition = 'opacity .4s';
-      alert.style.opacity = '0';
-      setTimeout(function() { alert.remove(); }, 400);
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => {
+      el.style.transition = 'opacity .3s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 300);
     }, 5000);
   });
 });
