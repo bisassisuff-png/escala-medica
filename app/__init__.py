@@ -18,7 +18,7 @@ def create_app(config_name=None):
 
     from app.models import (  # noqa: F401
         User, Location, DoctorLocationLink,
-        DoctorWindowConfirmation, FillingWindow, DoctorRoutine, DoctorRestriction, Schedule,
+        DoctorWindowConfirmation, FillingWindow, DoctorRoutine, DoctorRestriction, Schedule, Holiday,
         ScheduleSwap, SwapNotification, AuditLog,
     )
 

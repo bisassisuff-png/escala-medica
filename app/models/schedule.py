@@ -40,6 +40,7 @@ class FillingWindow(db.Model):
     restrictions = db.relationship('DoctorRestriction', back_populates='window', lazy='dynamic')
     schedules = db.relationship('Schedule', back_populates='window', lazy='dynamic')
     confirmations = db.relationship('DoctorWindowConfirmation', back_populates='window', lazy='dynamic')
+    holidays = db.relationship('Holiday', back_populates='window', lazy='dynamic')
 
     def __repr__(self):
         return f'<FillingWindow {self.year} ({self.status})>'
@@ -89,6 +90,25 @@ class DoctorRestriction(db.Model):
 
     def __repr__(self):
         return f'<DoctorRestriction doctor={self.doctor_id} date={self.restricted_date}>'
+
+
+class Holiday(db.Model):
+    __tablename__ = 'holidays'
+
+    id = db.Column(db.Integer, primary_key=True)
+    window_id = db.Column(db.Integer, db.ForeignKey('filling_windows.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    window = db.relationship('FillingWindow', back_populates='holidays')
+
+    __table_args__ = (
+        db.UniqueConstraint('window_id', 'date', 'name', name='uq_holiday_window_date_name'),
+    )
+
+    def __repr__(self):
+        return f'<Holiday {self.name} {self.date}>'
 
 
 class Schedule(db.Model):
