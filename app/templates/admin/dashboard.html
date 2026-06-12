@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard Admin — Escala Médica{% endblock %}
+{% block title %}Dashboard Admin — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -20,15 +20,118 @@
   <div class="kpi-card">
     <div class="kpi-card__label">Trocas pendentes</div>
     <div class="kpi-card__value">{{ total_swaps }}</div>
-    <div class="kpi-card__sub">Disponível na Etapa 6</div>
+    <div class="kpi-card__sub"><a href="{{ url_for('admin.swaps') }}">Gerenciar →</a></div>
   </div>
 </div>
 
+{% if current_window %}
+<div class="card">
+  <div class="card-header">
+    <h3><i class="bi bi-calendar3"></i> Escala {{ current_window.year }}</h3>
+    <span class="badge" style="background:#e6f4ea;color:#137333;">Publicada</span>
+  </div>
+  <div class="card-body">
+    <div class="schedule-month-grid">
+      <div class="schedule-month-col">
+        <div class="schedule-month-label">{{ month_names[current_month] }} · {{ current_window.year }}</div>
+        <div class="kpi-grid" style="margin-bottom:1rem;">
+          <div class="kpi-card">
+            <div class="kpi-card__label">Cobertura — {{ month_names[current_month] }}</div>
+            <div class="kpi-card__value">{{ coverage.pct }}%</div>
+            <div class="kpi-card__sub">{{ coverage.covered }} de {{ coverage.total }} plantões</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card__label">Sem cobertura</div>
+            <div class="kpi-card__value" style="color:{% if coverage.uncovered %}var(--warning){% else %}var(--success){% endif %};">{{ coverage.uncovered }}</div>
+            <div class="kpi-card__sub">slots no mês</div>
+          </div>
+        </div>
+        <a href="{{ url_for('admin.schedule_review', id=current_window.id, month=current_month) }}" class="btn btn-outline btn-sm">
+          <i class="bi bi-calendar3"></i> Ver escala do mês →
+        </a>
+      </div>
+      <div class="schedule-month-col">
+        <div class="schedule-month-label">{{ month_names[next_month] }} · {{ next_year }}</div>
+        {% if next_window and coverage_next %}
+        <div class="kpi-grid" style="margin-bottom:1rem;">
+          <div class="kpi-card">
+            <div class="kpi-card__label">Cobertura — {{ month_names[next_month] }}</div>
+            <div class="kpi-card__value">{{ coverage_next.pct }}%</div>
+            <div class="kpi-card__sub">{{ coverage_next.covered }} de {{ coverage_next.total }} plantões</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card__label">Sem cobertura</div>
+            <div class="kpi-card__value" style="color:{% if coverage_next.uncovered %}var(--warning){% else %}var(--success){% endif %};">{{ coverage_next.uncovered }}</div>
+            <div class="kpi-card__sub">slots no mês</div>
+          </div>
+        </div>
+        <a href="{{ url_for('admin.schedule_review', id=next_window.id, month=next_month) }}" class="btn btn-outline btn-sm">
+          <i class="bi bi-calendar3"></i> Ver escala do mês →
+        </a>
+        {% else %}
+        <p class="schedule-month-empty">Escala ainda não publicada para este mês.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
 <div class="card">
   <div class="card-body empty-state">
-    <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
-    <h3>Escala não configurada</h3>
-    <p>Cadastre médicos e locais para começar.<br>A geração da escala estará disponível na Etapa 5.</p>
+    <div class="empty-state__icon"><i class="bi bi-calendar-x"></i></div>
+    <h3>Nenhuma escala publicada</h3>
+    <p>Crie e publique uma janela de escala para ver o resumo de cobertura aqui.<br><a href="{{ url_for('admin.windows') }}">Gerenciar janelas →</a></p>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.25rem;">
+  <div class="card-header mednews-header">
+    <img src="{{ url_for('static', filename='img/halftone-white.svg') }}" alt="" class="mednews-header__halftone">
+    <span class="mednews-label">MedNews</span>
+    {% if mednews_updated_at %}
+    <span class="mednews-updated">Atualizado em {{ mednews_updated_at.strftime('%d/%m/%Y') }}</span>
+    {% else %}
+    <span class="mednews-updated">Atualização automática às segundas-feiras</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if not mednews_svs and not mednews_jvs %}
+    <div class="empty-state" style="padding:1.5rem;">
+      <div class="empty-state__icon"><i class="bi bi-newspaper"></i></div>
+      <h3>Nenhuma notícia carregada ainda</h3>
+      <p>Atualização automática às segundas-feiras.</p>
+    </div>
+    {% else %}
+    <div class="mednews-grid">
+      <div class="mednews-col">
+        <div class="mednews-source-label">Society for Vascular Surgery — Notícias</div>
+        {% for item in mednews_svs %}
+        <div class="mednews-item">
+          <p class="mednews-item__title">{{ item.title }}</p>
+          {% if item.meta %}<div class="mednews-item__meta">{{ item.meta }}</div>{% endif %}
+          {% if item.summary %}<p class="mednews-item__summary">{{ item.summary }}</p>{% endif %}
+          <a href="{{ item.url }}" target="_blank" rel="noopener" class="mednews-item__link">Ler matéria completa →</a>
+        </div>
+        {% else %}
+        <p class="mednews-item__summary">Sem itens carregados.</p>
+        {% endfor %}
+      </div>
+      <div class="mednews-col">
+        <div class="mednews-source-label">Journal of Vascular Surgery — Últimas publicações</div>
+        {% for item in mednews_jvs %}
+        <div class="mednews-item">
+          <p class="mednews-item__title">{{ item.title }}</p>
+          {% if item.meta %}<div class="mednews-item__meta">{{ item.meta }}</div>{% endif %}
+          {% if item.summary %}<p class="mednews-item__summary">{{ item.summary }}</p>{% endif %}
+          <a href="{{ item.url }}" target="_blank" rel="noopener" class="mednews-item__link">Ler matéria completa →</a>
+        </div>
+        {% else %}
+        <p class="mednews-item__summary">Sem itens carregados.</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

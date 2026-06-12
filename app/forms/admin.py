@@ -1,8 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, TextAreaField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, Email, Optional, ValidationError
 from app.models.user import User
-from app.models.location import Location
 
 
 class DoctorForm(FlaskForm):
@@ -37,24 +36,5 @@ class DoctorForm(FlaskForm):
 
 class LocationForm(FlaskForm):
     name = StringField('Nome', validators=[DataRequired(), Length(2, 200)])
-    address = TextAreaField('Endereço', validators=[Optional(), Length(max=500)])
     scale_type = StringField('Tipo de escala', validators=[Optional(), Length(max=100)])
     submit = SubmitField('Salvar')
-
-
-class DoctorLocationLinkForm(FlaskForm):
-    doctor_id = SelectField('Médico', coerce=int, validators=[DataRequired()])
-    location_id = SelectField('Local', coerce=int, validators=[DataRequired()])
-    scale_type = StringField('Tipo de escala', validators=[Optional(), Length(max=100)])
-    submit = SubmitField('Salvar')
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.doctor_id.choices = [
-            (u.id, f'{u.name} — CRM {u.crm or "s/n"}')
-            for u in User.query.filter_by(role='medico', active=True).order_by(User.name).all()
-        ]
-        self.location_id.choices = [
-            (l.id, l.name)
-            for l in Location.query.filter_by(active=True).order_by(Location.name).all()
-        ]

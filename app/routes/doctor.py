@@ -1,9 +1,14 @@
+from datetime import date as date_type
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models.schedule import FillingWindow, DoctorRoutine, DoctorRestriction, DoctorWindowConfirmation
+from app.models.schedule import FillingWindow, DoctorRoutine, DoctorRestriction, DoctorWindowConfirmation, Holiday
 from app.utils.decorators import medico_required
 from app.utils.audit import log as audit
+from app.utils.calendar_helpers import (
+    build_calendar_weeks, group_entries_by_date, location_palette, WEEKDAY_NAMES,
+    default_schedule_month,
+)
 
 doctor_bp = Blueprint('doctor', __name__, url_prefix='/medico')
 
@@ -14,6 +19,11 @@ FREQ_LABELS = {'weekly': 'Semanal', 'biweekly': 'Quinzenal', 'monthly': 'Mensal'
 
 def _get_open_window():
     return FillingWindow.query.filter_by(status='open').order_by(FillingWindow.year.desc()).first()
+
+
+@doctor_bp.context_processor
+def inject_open_window_flag():
+    return dict(has_open_window=_get_open_window() is not None)
 
 
 def _is_confirmed(doctor_id, window_id):
@@ -28,6 +38,7 @@ def _is_confirmed(doctor_id, window_id):
 def dashboard():
     from datetime import datetime as dt
     from app.services.kpi_service import get_doctor_month_stats
+    from app.services.mednews_service import get_mednews_dashboard_context
 
     open_window = _get_open_window()
     confirmed = _is_confirmed(current_user.id, open_window.id) if open_window else False
@@ -43,8 +54,12 @@ def dashboard():
     month = request.args.get('month', type=int, default=dt.now().month)
     if month < 1 or month > 12:
         month = 1
+    if published_window:
+        month = default_schedule_month(published_window, month)
     month_stats = get_doctor_month_stats(current_user.id, published_window.id, month) if published_window else {}
     month_names = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+    mednews_ctx = get_mednews_dashboard_context()
 
     return render_template('doctor/dashboard.html',
                            window=open_window, confirmed=confirmed,
@@ -53,7 +68,8 @@ def dashboard():
                            published_window=published_window,
                            month_stats=month_stats,
                            month=month,
-                           month_names=month_names)
+                           month_names=month_names,
+                           **mednews_ctx)
 
 
 @doctor_bp.route('/rotinas', methods=['GET', 'POST'])
@@ -235,9 +251,9 @@ def schedule():
     month = request.args.get('month', type=int, default=1)
     if month < 1 or month > 12:
         month = 1
+    month = default_schedule_month(window, month)
 
     import calendar
-    from datetime import date as date_type
     last_day = date_type(window.year, month, calendar.monthrange(window.year, month)[1])
 
     entries = (Schedule.query
@@ -252,9 +268,44 @@ def schedule():
     locations = {l.id: l for l in Location.query.all()}
     month_names = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
+    # Dados para a grade de calendário
+    calendar_weeks = build_calendar_weeks(window.year, month)
+    entries_by_date = group_entries_by_date(entries)
+    holidays_by_date = {h.date: h for h in Holiday.query.filter_by(window_id=window.id).all()}
+    location_list = sorted(locations.values(), key=lambda l: l.id)
+    loc_color = location_palette(location_list)
+    today = date_type.today()
+
     return render_template('doctor/schedule.html',
                            window=window, entries=entries, locations=locations,
-                           month=month, month_names=month_names)
+                           month=month, month_names=month_names,
+                           calendar_weeks=calendar_weeks, entries_by_date=entries_by_date,
+                           holidays_by_date=holidays_by_date, location_list=location_list,
+                           loc_color=loc_color, today=today, weekday_names=WEEKDAY_NAMES)
+
+
+@doctor_bp.route('/escala-grupo')
+@login_required
+@medico_required
+def group_schedule():
+    from app.services.schedule_view_service import get_schedule_review_context
+
+    # Janela publicada mais recente
+    window = (FillingWindow.query
+              .filter_by(status='published')
+              .order_by(FillingWindow.year.desc())
+              .first())
+    if not window:
+        flash('Nenhuma escala publicada disponível.', 'info')
+        return redirect(url_for('doctor.dashboard'))
+
+    month = request.args.get('month', type=int, default=1)
+    if month < 1 or month > 12:
+        month = 1
+    month = default_schedule_month(window, month)
+
+    ctx = get_schedule_review_context(window, month)
+    return render_template('doctor/group_schedule.html', window=window, **ctx)
 
 
 # ── Trocas ────────────────────────────────────────────────────────────────────
@@ -264,8 +315,8 @@ def schedule():
 @medico_required
 def swaps():
     from app.models.swap import ScheduleSwap, SwapNotification
-    from app.models.schedule import Schedule
     from app.models.location import Location
+    from app.services.swap_service import build_swap_view_data
 
     # Marcar notificações como vistas
     SwapNotification.query.filter_by(
@@ -279,22 +330,27 @@ def swaps():
                 .order_by(ScheduleSwap.requested_at.desc())
                 .all())
 
-    # Trocas disponíveis para mim aceitar (abertas, me notificadas)
-    available = (ScheduleSwap.query
-                 .join(SwapNotification,
-                       (SwapNotification.swap_id == ScheduleSwap.id) &
-                       (SwapNotification.notified_doctor_id == current_user.id))
-                 .filter(ScheduleSwap.status == 'open')
-                 .order_by(ScheduleSwap.requested_at.desc())
-                 .all())
+    # Todas as trocas em aberto solicitadas por outros médicos
+    open_swaps = (ScheduleSwap.query
+                  .filter(ScheduleSwap.status == 'open',
+                          ScheduleSwap.requester_id != current_user.id)
+                  .order_by(ScheduleSwap.requested_at.asc())
+                  .all())
 
     locations = {l.id: l for l in Location.query.all()}
     from app.models.user import User
     doctors = {u.id: u for u in User.query.all()}
 
+    eligible_by_swap, eligible_names_by_swap, days_open_by_swap = build_swap_view_data(
+        my_swaps + open_swaps, doctors
+    )
+
     return render_template('doctor/swaps/list.html',
-                           my_swaps=my_swaps, available=available,
-                           locations=locations, doctors=doctors)
+                           my_swaps=my_swaps, open_swaps=open_swaps,
+                           locations=locations, doctors=doctors,
+                           eligible_by_swap=eligible_by_swap,
+                           eligible_names_by_swap=eligible_names_by_swap,
+                           days_open_by_swap=days_open_by_swap)
 
 
 @doctor_bp.route('/trocas/solicitar/<int:schedule_id>', methods=['POST'])

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard KPIs — Escala Médica{% endblock %}
+{% block title %}Dashboard KPIs — Vascular Vix AI HUB{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -158,25 +158,6 @@
   {% endif %}
 </div>
 
-<!-- Taxa de ocupação por local -->
-<div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header"><h3><i class="bi bi-hospital"></i> Ocupação por local — {{ month_names[month] }}</h3></div>
-  <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap;">
-    {% for lid, loc in data.locations.items() %}
-    {% set filled = data.loc_counts.get(lid, 0) %}
-    {% set expected = data.days_in_month %}
-    {% set pct = ((filled / expected * 100) | round(1)) if expected else 0 %}
-    <div style="flex:1;min-width:180px;background:var(--bg);border-radius:var(--radius);padding:1rem;">
-      <div style="font-weight:600;margin-bottom:.5rem;">{{ loc.name }}</div>
-      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:.5rem;">
-        <div style="width:{{ [pct,100]|min }}%;height:100%;background:{% if pct>=90 %}var(--success){% elif pct>=70 %}var(--primary){% else %}var(--danger){% endif %};border-radius:4px;"></div>
-      </div>
-      <div style="font-size:.85rem;color:var(--text-muted);">{{ filled }} / {{ expected }} dias ({{ pct }}%)</div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
 <!-- Médicos com mais restrições -->
 {% if data.restr_rows %}
 <div class="card" style="margin-bottom:1.25rem;">
@@ -205,7 +186,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 // Paleta de cores
-const COLORS = ['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
+const COLORS = ['#1b2a4a','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
 
 // 1. Plantões por médico (barras empilhadas por local)
 (function() {
@@ -243,7 +224,7 @@ const COLORS = ['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff
     type: 'bar',
     data: {
       labels: days,
-      datasets: [{ label: 'Plantões', data, backgroundColor: '#1a73e8', borderRadius: 3 }]
+      datasets: [{ label: 'Plantões', data, backgroundColor: '#1b2a4a', borderRadius: 3 }]
     },
     options: { responsive: true, plugins: { legend: { display: false } },
                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -275,7 +256,7 @@ const COLORS = ['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff
     data: {
       labels: docNames,
       datasets: [
-        { label: '{{ month_names[month] }}', data: doctors.map(id => curr[id]||0), backgroundColor: '#1a73e8', borderRadius: 3 },
+        { label: '{{ month_names[month] }}', data: doctors.map(id => curr[id]||0), backgroundColor: '#1b2a4a', borderRadius: 3 },
         { label: '{{ month_names[month-1 if month>1 else 12] }}', data: doctors.map(id => prev[id]||0), backgroundColor: '#dadce0', borderRadius: 3 },
       ]
     },

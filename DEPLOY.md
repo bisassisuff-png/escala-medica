@@ -213,6 +213,23 @@ sudo systemctl status postgresql
 sudo -u postgres pg_dump escala_medica | gzip > /tmp/escala_$(date +%Y%m%d).sql.gz
 ```
 
+### Atualização semanal do card MedNews (cron)
+
+O card "MedNews" do dashboard admin lê um cache (tabela `med_news_items`)
+atualizado pelo comando `flask mednews-refresh`. Ele não tem botão de
+atualização manual — agende-o para rodar 1x por semana, às segundas-feiras:
+
+```bash
+sudo su - escala
+crontab -e
+```
+
+Adicione a linha (segunda-feira às 06:00):
+
+```cron
+0 6 * * 1 cd /home/escala/app && FLASK_APP=run.py .venv/bin/flask mednews-refresh >> /var/log/escala/mednews.log 2>&1
+```
+
 ---
 
 ## 9. Variáveis de Ambiente em Produção

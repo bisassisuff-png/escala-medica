@@ -10,3 +10,5 @@ Werkzeug==3.0.3
 SQLAlchemy==2.0.31
 alembic==1.13.2
 email-validator==2.2.0
+requests==2.34.2
+beautifulsoup4==4.15.0

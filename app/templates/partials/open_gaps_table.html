@@ -1,0 +1,34 @@
+<details class="card lacunas-card" style="margin-top:1.25rem;">
+  <summary class="card-header lacunas-card__summary">
+    <h3>Lacunas em aberto — {{ month_names[month] }} / {{ window.year }}</h3>
+    <span class="lacunas-card__count">
+      {{ uncovered|length }} lacuna(s)
+      <i class="bi bi-chevron-down lacunas-card__chevron"></i>
+    </span>
+  </summary>
+  {% if uncovered %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Dia</th><th>Local</th><th>Lacuna</th></tr>
+      </thead>
+      <tbody>
+        {% for u in uncovered %}
+        <tr>
+          <td><strong>{{ u.date.strftime('%d/%m/%Y') }}</strong></td>
+          <td>{{ weekday_names[(u.date.weekday() + 1) % 7] }}</td>
+          <td>{{ locations[u.location_id].name if u.location_id in locations else '—' }}</td>
+          <td>{{ u.scale_type or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <div class="empty-state__icon"><i class="bi bi-check-circle"></i></div>
+    <h3>Sem lacunas em aberto</h3>
+    <p>Todos os plantões necessários estão cobertos neste mês.</p>
+  </div>
+  {% endif %}
+</details>

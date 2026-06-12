@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Escala Médica{% endblock %}</title>
+  <title>{% block title %}Vascular Vix AI HUB{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo-vascularvix.svg') }}">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -21,7 +22,8 @@
       <i class="bi bi-list"></i>
     </button>
     <a href="/" class="app-navbar__brand">
-      <i class="bi bi-calendar2-heart"></i> Escala Médica
+      <img src="{{ url_for('static', filename='img/logo-vascularvix.svg') }}" class="app-navbar__logo" alt="">
+      Vascular Vix AI Hub
     </a>
   </div>
   <div class="app-navbar__right">
@@ -57,10 +59,6 @@
          class="sidebar-item {% if 'locations' in request.endpoint %}active{% endif %}">
         <i class="bi bi-hospital"></i> Locais
       </a>
-      <a href="{{ url_for('admin.links') }}"
-         class="sidebar-item {% if 'links' in request.endpoint %}active{% endif %}">
-        <i class="bi bi-link-45deg"></i> Vínculos
-      </a>
 
       <div class="sidebar-section">Escala</div>
       <a href="{{ url_for('admin.windows') }}"
@@ -82,21 +80,46 @@
          class="sidebar-item {% if request.endpoint == 'doctor.dashboard' %}active{% endif %}">
         <i class="bi bi-grid-1x2"></i> Painel
       </a>
+      {% if has_open_window %}
       <a href="{{ url_for('doctor.routines') }}"
          class="sidebar-item {% if request.endpoint == 'doctor.routines' %}active{% endif %}">
         <i class="bi bi-calendar3"></i> Rotinas
       </a>
+      {% else %}
+      <span class="sidebar-item sidebar-item--disabled"
+            title="Disponível quando houver uma janela de preenchimento aberta">
+        <i class="bi bi-calendar3"></i> Rotinas
+      </span>
+      {% endif %}
+      {% if has_open_window %}
       <a href="{{ url_for('doctor.restrictions') }}"
          class="sidebar-item {% if request.endpoint == 'doctor.restrictions' %}active{% endif %}">
         <i class="bi bi-slash-circle"></i> Restrições
       </a>
+      {% else %}
+      <span class="sidebar-item sidebar-item--disabled"
+            title="Disponível quando houver uma janela de preenchimento aberta">
+        <i class="bi bi-slash-circle"></i> Restrições
+      </span>
+      {% endif %}
+      {% if has_open_window %}
       <a href="{{ url_for('doctor.confirmation') }}"
          class="sidebar-item {% if request.endpoint == 'doctor.confirmation' %}active{% endif %}">
         <i class="bi bi-check2-circle"></i> Confirmar
       </a>
+      {% else %}
+      <span class="sidebar-item sidebar-item--disabled"
+            title="Disponível quando houver uma janela de preenchimento aberta">
+        <i class="bi bi-check2-circle"></i> Confirmar
+      </span>
+      {% endif %}
       <a href="{{ url_for('doctor.schedule') }}"
          class="sidebar-item {% if request.endpoint == 'doctor.schedule' %}active{% endif %}">
         <i class="bi bi-calendar2-check"></i> Minha Escala
+      </a>
+      <a href="{{ url_for('doctor.group_schedule') }}"
+         class="sidebar-item {% if request.endpoint == 'doctor.group_schedule' %}active{% endif %}">
+        <i class="bi bi-people"></i> Escala do Grupo
       </a>
       <a href="{{ url_for('doctor.swaps') }}"
          class="sidebar-item {% if 'swaps' in request.endpoint and 'doctor' in request.endpoint %}active{% endif %}"

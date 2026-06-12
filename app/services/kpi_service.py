@@ -3,20 +3,61 @@ Serviço de KPIs para o dashboard administrativo.
 Todas as consultas são feitas sob demanda (sem cache).
 """
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from collections import defaultdict
 from sqlalchemy import func
 
 from app.extensions import db
-from app.models.schedule import Schedule, FillingWindow, DoctorRestriction
+from app.models.schedule import Schedule, FillingWindow, DoctorRestriction, CoverageException, CoverageAcceptance
 from app.models.swap import ScheduleSwap
 from app.models.user import User
-from app.models.location import Location, DoctorLocationLink
+from app.models.location import Location, get_required_loc_keys
 
 
 def _month_range(year: int, month: int):
     last = calendar.monthrange(year, month)[1]
     return date(year, month, 1), date(year, month, last)
+
+
+def get_coverage_summary(window_id: int, month: int) -> dict:
+    """Resumo de cobertura (slots esperados x cobertos) para window+mês,
+    descontando exceções (CoverageException) e aceites (CoverageAcceptance)."""
+    window = db.session.get(FillingWindow, window_id)
+    start, end = _month_range(window.year, month)
+
+    loc_keys = get_required_loc_keys()
+
+    covered = {(e.date, e.location_id, e.scale_type)
+               for e in Schedule.query.filter(
+                   Schedule.window_id == window_id,
+                   Schedule.date >= start, Schedule.date <= end).all()}
+
+    excepted_by_date = defaultdict(set)
+    for e in CoverageException.query.filter(
+            CoverageException.window_id == window_id,
+            CoverageException.date >= start, CoverageException.date <= end).all():
+        excepted_by_date[e.date].add(e.location_id)
+
+    accepted = {(a.date, a.location_id, a.scale_type)
+                for a in CoverageAcceptance.query.filter(
+                    CoverageAcceptance.window_id == window_id,
+                    CoverageAcceptance.date >= start, CoverageAcceptance.date <= end).all()}
+
+    total = uncovered = 0
+    d = start
+    while d <= end:
+        excepted = excepted_by_date.get(d, set())
+        for (loc_id, sc) in loc_keys:
+            if loc_id in excepted:
+                continue
+            total += 1
+            if (d, loc_id, sc) not in covered and (d, loc_id, sc) not in accepted:
+                uncovered += 1
+        d += timedelta(days=1)
+
+    covered_n = total - uncovered
+    pct = round(covered_n / total * 100, 1) if total else 100.0
+    return {'total': total, 'covered': covered_n, 'uncovered': uncovered, 'pct': pct}
 
 
 def get_dashboard_data(window_id: int, month: int) -> dict:
@@ -74,15 +115,6 @@ def get_dashboard_data(window_id: int, month: int) -> dict:
                  .all())
     prev_totals = {r.doctor_id: r.c for r in prev_rows}
 
-    # ── Taxa de ocupação por local (no mês) ───────────────────────────────────
-    days_in_month = calendar.monthrange(year, month)[1]
-    loc_rows = (db.session.query(Schedule.location_id, func.count().label('c'))
-                .filter(Schedule.window_id == window_id,
-                        Schedule.date.between(start, end))
-                .group_by(Schedule.location_id)
-                .all())
-    loc_counts = {r.location_id: r.c for r in loc_rows}
-
     # ── Trocas (ano todo da janela) ───────────────────────────────────────────
     def _swap_count(status):
         return (ScheduleSwap.query
@@ -127,8 +159,6 @@ def get_dashboard_data(window_id: int, month: int) -> dict:
         doctor_loc={k: dict(v) for k, v in doctor_loc.items()},
         weekday_counts=dict(weekday_counts),
         prev_totals=prev_totals,
-        loc_counts=loc_counts,
-        days_in_month=days_in_month,
         swap_open=swap_open,
         swap_accepted=swap_accepted,
         swap_cancelled=swap_cancelled,

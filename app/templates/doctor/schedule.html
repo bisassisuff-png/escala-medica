@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Minha Escala — Escala Médica{% endblock %}
+{% block title %}Minha Escala — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -9,56 +9,68 @@
 <!-- Navegação por mês -->
 <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.25rem;">
   {% for m in range(1, 13) %}
+  {% if month_nav_disabled(window, m) %}
+  <span class="btn btn-sm btn-outline btn--disabled"
+        title="Sem dados importados para este mês">
+    {{ month_names[m] }}
+  </span>
+  {% else %}
   <a href="{{ url_for('doctor.schedule', month=m) }}"
      class="btn btn-sm {% if m == month %}btn-primary{% else %}btn-outline{% endif %}">
     {{ month_names[m] }}
   </a>
+  {% endif %}
   {% endfor %}
 </div>
 
-<div class="card">
+<div class="card cal-card">
   <div class="card-header">
     <h3>{{ month_names[month] }} / {{ window.year }}</h3>
     <span style="color:var(--text-muted);font-size:.875rem;">{{ entries|length }} plantão(ões)</span>
   </div>
-  {% if entries %}
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Dia</th><th>Local</th><th>Tipo de escala</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for e in entries %}
-        {% set open_swap = e.swaps.filter_by(status='open').first() %}
-        <tr>
-          <td><strong>{{ e.date.strftime('%d/%m/%Y') }}</strong></td>
-          <td>{{ e.date.strftime('%A') }}</td>
-          <td>{{ locations[e.location_id].name if e.location_id in locations else '—' }}</td>
-          <td>{{ e.scale_type or '—' }}</td>
-          <td>
+  <div class="cal-grid-wrapper">
+    <div class="cal-grid">
+      {% for wd in weekday_names %}
+      <div class="cal-grid__weekday">{{ wd }}</div>
+      {% endfor %}
+      {% for week in calendar_weeks %}
+        {% for day in week %}
+        <div class="cal-day
+          {% if day.month != month %} cal-day--other-month{% endif %}
+          {% if day == today %} cal-day--today{% endif %}">
+          <div class="cal-day__head">
+            <span class="cal-day__date">{{ day.day }}</span>
+          </div>
+          {% if holidays_by_date.get(day) %}
+          <div class="cal-day__holiday" title="{{ holidays_by_date[day].name }}">{{ holidays_by_date[day].name }}</div>
+          {% endif %}
+          {% for e in entries_by_date.get(day, []) %}
+          {% set open_swap = e.swaps.filter_by(status='open').first() %}
+          <span class="cal-event cal-event--{{ loc_color.get(e.location_id, 0) }}"
+                title="{{ locations[e.location_id].name if e.location_id in locations else '—' }} — {{ e.scale_type or '' }}">
+            <span class="cal-event__label">{{ locations[e.location_id].name.replace('Hospital ', '') if e.location_id in locations else '—' }} {{ e.scale_type or '' }}</span>
             {% if open_swap %}
-              <span class="badge" style="background:#fef7e0;color:#7f5c00;">Troca aberta</span>
+              <i class="bi bi-arrow-repeat cal-event__swap-pending" title="Troca aberta"></i>
             {% else %}
-              <form method="POST" action="{{ url_for('doctor.swaps_request', schedule_id=e.id) }}">
+              <form method="POST" action="{{ url_for('doctor.swaps_request', schedule_id=e.id) }}" class="cal-event__swap-form">
                 {{ csrf_token_field() }}
-                <button class="btn btn-sm btn-outline"
+                <button type="submit" class="cal-event__swap-btn" title="Solicitar troca"
                   onclick="return confirm('Solicitar troca para {{ e.date.strftime('%d/%m/%Y') }}?')">
-                  <i class="bi bi-arrow-left-right"></i> Trocar
+                  <i class="bi bi-arrow-left-right"></i>
                 </button>
               </form>
             {% endif %}
-          </td>
-        </tr>
+          </span>
+          {% endfor %}
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      {% endfor %}
+    </div>
   </div>
-  {% else %}
-  <div class="card-body empty-state">
-    <div class="empty-state__icon"><i class="bi bi-calendar3"></i></div>
-    <h3>Nenhum plantão em {{ month_names[month] }}</h3>
-    <p>Você não tem escalas programadas para este mês.</p>
+  <div class="cal-legend">
+    {% for l in location_list %}
+    <span><span class="cal-legend__dot cal-event--{{ loc_color[l.id] }}"></span>{{ l.name }}</span>
+    {% endfor %}
   </div>
-  {% endif %}
 </div>
 {% endblock %}

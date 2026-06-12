@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Janela {{ window.year }} — Escala Médica{% endblock %}
+{% block title %}Janela {{ window.year }} — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -20,7 +20,8 @@
       {{ csrf_token_field() }}
       <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')"><i class="bi bi-lightning"></i> Gerar escala</button>
     </form>
-    {% elif window.status in ('published',) %}
+    {% endif %}
+    {% if window.status in ('open', 'closed', 'published') %}
     <a href="{{ url_for('admin.schedule_review', id=window.id) }}" class="btn btn-primary"><i class="bi bi-calendar2-check"></i> Ver escala</a>
     {% endif %}
   </div>

@@ -7,7 +7,6 @@ class Location(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    address = db.Column(db.Text)
     scale_type = db.Column(db.String(100))
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -38,3 +37,33 @@ class DoctorLocationLink(db.Model):
 
     def __repr__(self):
         return f'<DoctorLocationLink doctor={self.doctor_id} location={self.location_id}>'
+
+
+class LocationScaleRequirement(db.Model):
+    __tablename__ = 'location_scale_requirements'
+
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
+    scale_type = db.Column(db.String(100), nullable=False)
+    required = db.Column(db.Boolean, default=True, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('location_id', 'scale_type', name='uq_location_scale_requirement'),
+    )
+
+    def __repr__(self):
+        return f'<LocationScaleRequirement location={self.location_id} scale_type={self.scale_type} required={self.required}>'
+
+
+def get_required_loc_keys(active_links=None):
+    """(location_id, scale_type) ativos que devem gerar lacuna se vazios.
+
+    Por padrão todo par é obrigatório; um registro em
+    LocationScaleRequirement com required=False remove o par do conjunto.
+    """
+    if active_links is None:
+        active_links = DoctorLocationLink.query.filter_by(active=True).all()
+    loc_keys = {(lk.location_id, lk.scale_type) for lk in active_links}
+    optional = {(r.location_id, r.scale_type)
+                for r in LocationScaleRequirement.query.filter_by(required=False).all()}
+    return loc_keys - optional

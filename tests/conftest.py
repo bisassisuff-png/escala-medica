@@ -27,7 +27,8 @@ from app.models.audit import AuditLog
 _TRUNCATE_SQL = text(
     "TRUNCATE TABLE swap_notifications, schedule_swaps, schedules, "
     "doctor_window_confirmations, doctor_restrictions, doctor_routines, "
-    "filling_windows, doctor_location_links, locations, audit_log, users "
+    "filling_windows, doctor_location_links, locations, audit_log, users, "
+    "med_news_items "
     "CASCADE"
 )
 

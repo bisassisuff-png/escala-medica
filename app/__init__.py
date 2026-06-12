@@ -19,7 +19,7 @@ def create_app(config_name=None):
     from app.models import (  # noqa: F401
         User, Location, DoctorLocationLink,
         DoctorWindowConfirmation, FillingWindow, DoctorRoutine, DoctorRestriction, Schedule, Holiday,
-        ScheduleSwap, SwapNotification, AuditLog,
+        CoverageException, ScheduleSwap, SwapNotification, AuditLog, MedNewsItem,
     )
 
     from app.routes.auth import auth_bp
@@ -31,12 +31,15 @@ def create_app(config_name=None):
 
     from flask_wtf.csrf import generate_csrf
     from markupsafe import Markup
+    from app.utils.calendar_helpers import month_nav_disabled
 
     @app.context_processor
     def inject_helpers():
         def csrf_token_field():
             return Markup(f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">')
-        return dict(csrf_token_field=csrf_token_field)
+
+        return dict(csrf_token_field=csrf_token_field,
+                     month_nav_disabled=month_nav_disabled)
 
     @app.route('/')
     def index():
@@ -50,5 +53,12 @@ def create_app(config_name=None):
     @app.errorhandler(404)
     def not_found(e):
         return render_template('errors/404.html'), 404
+
+    @app.cli.command('mednews-refresh')
+    def mednews_refresh_cmd():
+        """Atualiza o cache de notícias do card MedNews (rodar 1x/semana)."""
+        from app.services.mednews_service import refresh_mednews
+        result = refresh_mednews()
+        print(result)
 
     return app

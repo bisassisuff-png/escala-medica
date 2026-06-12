@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} — Escala Médica{% endblock %}
+{% block title %}{{ title }} — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -51,4 +51,37 @@
     </form>
   </div>
 </div>
+
+{% if doctor and links_by_location %}
+<div class="card" style="max-width:560px;margin-top:1.25rem;">
+  <div class="card-header"><h3>Vínculos com locais e posições</h3></div>
+  <div class="card-body">
+    <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:.75rem;">
+      Por padrão, todo médico está vinculado a todos os locais e posições (P1, P2 etc.).
+      Desmarque para remover um vínculo específico deste médico, ou cadastre uma nova
+      posição (vincula automaticamente todos os médicos a ela).
+    </p>
+    <form method="POST" action="{{ url_for('admin.doctors_links', id=doctor.id) }}">
+      {{ csrf_token_field() }}
+      {% for entry in links_by_location %}
+      <div style="margin-bottom:.75rem;">
+        <strong>{{ entry.location.name }}</strong>
+        {% for combo in entry.combos %}
+        <div style="display:flex;align-items:center;gap:.5rem;margin:.3rem 0 .3rem 1rem;">
+          <input type="checkbox" name="link_{{ entry.location.id }}_{{ combo.scale_type }}"
+                 id="link_{{ entry.location.id }}_{{ combo.scale_type }}" {% if combo.active %}checked{% endif %}>
+          <label for="link_{{ entry.location.id }}_{{ combo.scale_type }}">{{ combo.scale_type }}</label>
+        </div>
+        {% endfor %}
+        <div style="display:flex;align-items:center;gap:.5rem;margin:.3rem 0 .3rem 1rem;">
+          <input type="text" name="new_position_{{ entry.location.id }}" class="form-control"
+                 placeholder="Nova posição (ex: P4)" style="max-width:200px;font-size:.8125rem;padding:.3rem .5rem;">
+        </div>
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-outline btn-sm" style="margin-top:.5rem;">Salvar vínculos</button>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

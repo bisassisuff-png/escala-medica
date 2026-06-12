@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} — Escala Médica{% endblock %}
+{% block title %}{{ title }} — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -24,12 +24,6 @@
         {% for e in form.scale_type.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
       </div>
 
-      <div class="form-group">
-        {{ form.address.label(class="form-label") }}
-        {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows=3, placeholder="Endereço completo (opcional)") }}
-        {% for e in form.address.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
-      </div>
-
       <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">
         <a href="{{ url_for('admin.locations') }}" class="btn btn-outline">Cancelar</a>
         {{ form.submit(class="btn btn-primary") }}
@@ -37,4 +31,43 @@
     </form>
   </div>
 </div>
+
+{% if location and scale_requirements is not none %}
+<div class="card" style="max-width:560px;margin-top:1.25rem;">
+  <div class="card-header"><h3>Tipos de escala obrigatórios</h3></div>
+  <div class="card-body">
+    <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:.75rem;">
+      Desmarque os tipos que não devem gerar lacuna/alerta no calendário quando vazios neste local.
+      Use "Remover" para apagar uma posição do sistema (desvincula todos os médicos) ou
+      cadastre uma posição nova abaixo (vincula automaticamente todos os médicos a ela).
+    </p>
+    <form method="POST" action="{{ url_for('admin.locations_scale_requirements', id=location.id) }}" id="scale-req-form">
+      {{ csrf_token_field() }}
+    </form>
+    {% for sr in scale_requirements %}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.4rem;">
+      <label style="display:flex;align-items:center;gap:.5rem;" for="req_{{ sr.scale_type }}">
+        <input type="checkbox" form="scale-req-form" name="required_{{ sr.scale_type }}" id="req_{{ sr.scale_type }}" {% if sr.required %}checked{% endif %}>
+        {{ sr.scale_type }} — obrigatório
+      </label>
+      <form method="POST" action="{{ url_for('admin.locations_scale_type_remove', id=location.id) }}"
+            onsubmit="return confirm('Remover a posição {{ sr.scale_type }} de {{ location.name }}? Todos os médicos serão desvinculados desta posição.')">
+        {{ csrf_token_field() }}
+        <input type="hidden" name="scale_type" value="{{ sr.scale_type }}">
+        <button type="submit" class="btn btn-sm btn-outline">Remover</button>
+      </form>
+    </div>
+    {% endfor %}
+    <button type="submit" form="scale-req-form" class="btn btn-outline btn-sm" style="margin-top:.5rem;">Salvar</button>
+
+    <form method="POST" action="{{ url_for('admin.locations_scale_type_add', id=location.id) }}"
+          style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;">
+      {{ csrf_token_field() }}
+      <input type="text" name="new_scale_type" class="form-control" placeholder="Nova posição (ex: P4)"
+             style="max-width:200px;font-size:.8125rem;padding:.3rem .5rem;">
+      <button type="submit" class="btn btn-outline btn-sm">Adicionar posição</button>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

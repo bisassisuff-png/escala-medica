@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Escala {{ window.year }} — Escala Médica{% endblock %}
+{% block title %}Escala {{ window.year }} — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -34,10 +34,6 @@
 <!-- Stats -->
 <div class="kpi-grid" style="margin-bottom:1.25rem;">
   <div class="kpi-card">
-    <div class="kpi-card__label">Total de slots</div>
-    <div class="kpi-card__value">{{ stats.total }}</div>
-  </div>
-  <div class="kpi-card">
     <div class="kpi-card__label">Cobertos por rotina</div>
     <div class="kpi-card__value" style="color:var(--success);">{{ stats.routine }}</div>
   </div>
@@ -56,92 +52,316 @@
 <!-- Navegação por mês -->
 <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.25rem;">
   {% for m in range(1, 13) %}
+  {% if month_nav_disabled(window, m) %}
+  <span class="btn btn-sm btn-outline btn--disabled"
+        title="Sem dados importados para este mês">
+    {{ month_names[m] }}
+  </span>
+  {% else %}
   <a href="{{ url_for('admin.schedule_review', id=window.id, month=m) }}"
      class="btn btn-sm {% if m == month %}btn-primary{% else %}btn-outline{% endif %}">
     {{ month_names[m] }}
   </a>
+  {% endif %}
   {% endfor %}
 </div>
 
-<!-- Slots sem cobertura -->
-{% if uncovered %}
-<div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--danger);">
-  <div class="card-header">
-    <h3 style="color:var(--danger);"><i class="bi bi-exclamation-triangle"></i> Slots sem cobertura em {{ month_names[month] }} ({{ uncovered|length }})</h3>
-  </div>
-  <div class="table-wrapper">
-    <table>
-      <thead><tr><th>Data</th><th>Local</th><th>Tipo de escala</th></tr></thead>
-      <tbody>
-        {% for slot in uncovered %}
-        <tr>
-          <td>{{ slot.date.strftime('%d/%m/%Y (%a)') }}</td>
-          <td>{{ locations[slot.location_id].name if slot.location_id in locations else '—' }}</td>
-          <td>{{ slot.scale_type or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
-
-<!-- Escala do mês -->
-<div class="card">
+<!-- Calendário -->
+<div class="card cal-card">
   <div class="card-header">
     <h3>{{ month_names[month] }} / {{ window.year }}</h3>
-    <span style="color:var(--text-muted);font-size:.875rem;">{{ entries|length }} entrada(s)</span>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <span style="color:var(--text-muted);font-size:.875rem;">{{ entries|length }} entrada(s)</span>
+    </div>
   </div>
-  {% if entries %}
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Dia</th><th>Local</th><th>Tipo</th><th>Médico</th><th>Origem</th><th>Status</th></tr>
-      </thead>
-      <tbody>
-        {% set ns = namespace(cur_date=None) %}
-        {% for e in entries %}
-        {% if e.date != ns.cur_date %}{% set ns.cur_date = e.date %}
-        <tr style="background:var(--bg);">
-          <td colspan="7" style="font-weight:600;font-size:.8rem;color:var(--text-muted);padding:.4rem 1rem;">
-            {{ e.date.strftime('%A, %d de %B') }}
-          </td>
-        </tr>
-        {% endif %}
-        <tr>
-          <td>{{ e.date.strftime('%d/%m') }}</td>
-          <td style="color:var(--text-muted);">{{ e.date.strftime('%a') }}</td>
-          <td>{{ locations[e.location_id].name if e.location_id in locations else '—' }}</td>
-          <td>{{ e.scale_type or '—' }}</td>
-          <td><strong>{{ doctors[e.doctor_id].name if e.doctor_id in doctors else '—' }}</strong></td>
-          <td>
-            {% if e.source == 'routine' %}
-              <span class="badge badge-medico">Rotina</span>
-            {% elif e.source == 'generated' %}
-              <span class="badge badge-admin">Gerado</span>
-            {% else %}
-              <span class="badge" style="background:#f1f3f4;">Manual</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if e.status == 'published' %}
-              <span class="badge badge-medico">Publicado</span>
-            {% else %}
-              <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Rascunho</span>
-            {% endif %}
-          </td>
-        </tr>
+  <div class="cal-grid-wrapper">
+    <div class="cal-grid">
+      {% for wd in weekday_names %}
+      <div class="cal-grid__weekday">{{ wd }}</div>
+      {% endfor %}
+      {% for week in calendar_weeks %}
+        {% for day in week %}
+        <div class="cal-day
+          {% if day.month != month %} cal-day--other-month{% endif %}
+          {% if day == today %} cal-day--today{% endif %}
+          {% if uncovered_by_date.get(day) %} cal-day--gap{% endif %}">
+          <div class="cal-day__head">
+            <span class="cal-day__date">{{ day.day }}</span>
+            <div class="cal-day__head-actions">
+              {% if uncovered_by_date.get(day) %}
+              <span class="cal-day__gap cal-tip">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ uncovered_by_date[day]|length }}
+                <span class="cal-tip__panel">
+                  <strong>Sem cobertura ({{ uncovered_by_date[day]|length }})</strong>
+                  <ul>
+                    {% for u in uncovered_by_date[day] %}
+                    <li>{{ locations[u.location_id].name if u.location_id in locations else '—' }} — {{ u.scale_type or '—' }}</li>
+                    {% endfor %}
+                  </ul>
+                </span>
+              </span>
+              {% endif %}
+              {% if day.month == month %}
+              <button type="button" class="cal-day__expand" data-date="{{ day.isoformat() }}" title="Editar dia" aria-label="Editar dia">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              {% endif %}
+            </div>
+          </div>
+          {% if holidays_by_date.get(day) %}
+          <div class="cal-day__holiday cal-tip">
+            {{ holidays_by_date[day].name }}
+            <span class="cal-tip__panel">{{ holidays_by_date[day].name }}</span>
+          </div>
+          {% endif %}
+          {% if day.month == month %}
+            {% for loc in location_list %}
+              {% set loc_entries = entries_by_date.get(day, [])|selectattr('location_id', 'equalto', loc.id)|list %}
+              {% if loc_entries %}
+                {% for e in loc_entries %}
+                <span class="cal-event cal-event--{{ loc_color.get(e.location_id, 0) }} cal-tip">
+                  <span class="cal-event__label">{{ loc_abbr.get(e.location_id, '') }} {{ e.scale_type or '' }} · {{ doctors[e.doctor_id].name.split()[0] if e.doctor_id in doctors else '—' }}</span>
+                  <span class="cal-tip__panel">
+                    <strong>{{ locations[e.location_id].name if e.location_id in locations else '—' }}</strong>
+                    {{ e.scale_type or '—' }}<br>
+                    {{ doctors[e.doctor_id].name if e.doctor_id in doctors else '—' }}
+                  </span>
+                </span>
+                {% endfor %}
+              {% elif exceptions_by_loc_date.get((day, loc.id)) %}
+                {% set exc = exceptions_by_loc_date[(day, loc.id)] %}
+                <div class="cal-event cal-event--{{ loc_color[loc.id] }} cal-event--exception cal-tip">
+                  <span class="cal-event__label">{{ loc.name }}: sem escala prevista</span>
+                  <span class="cal-tip__panel"><strong>{{ loc.name }}</strong>Sem escala prevista neste dia.</span>
+                  <form method="POST" action="{{ url_for('admin.schedule_exception_delete', id=window.id, exc_id=exc.id) }}" class="cal-event__swap-form">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <button type="submit" class="cal-event__swap-btn" title="Remover marcação">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                </div>
+              {% else %}
+                <form method="POST" action="{{ url_for('admin.schedule_exception_create', id=window.id) }}" class="cal-mark-form">
+                  {{ csrf_token_field() }}
+                  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+                  <input type="hidden" name="location_id" value="{{ loc.id }}">
+                  <input type="hidden" name="month" value="{{ month }}">
+                  <button type="submit" class="cal-mark-btn" title="Marcar {{ loc.name }}: sem escala prevista">
+                    <i class="bi bi-plus-lg"></i> {{ loc_abbr.get(loc.id, '') }}
+                  </button>
+                </form>
+              {% endif %}
+            {% endfor %}
+            <template id="day-editor-{{ day.isoformat() }}">
+              {% if holidays_by_date.get(day) %}
+              <div class="day-editor__holiday"><i class="bi bi-calendar-event"></i> {{ holidays_by_date[day].name }}</div>
+              {% endif %}
+              {% for loc in location_list %}
+              <div class="day-editor__location">
+                <h4 class="day-editor__location-header cal-event--{{ loc_color[loc.id] }}">{{ loc.name }}</h4>
+                <div class="day-editor__location-body">
+                {% set editor_entries = entries_by_date.get(day, [])|selectattr('location_id', 'equalto', loc.id)|list %}
+                {% for e in editor_entries %}
+                <div class="day-editor__entry">
+                  <form method="POST" action="{{ url_for('admin.schedule_entry_update', id=window.id, entry_id=e.id) }}" class="day-editor__entry-form">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="location_id" value="{{ loc.id }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                    <select name="doctor_id" class="form-control day-editor__doctor">
+                      {% if e.doctor_id not in doctors_list_ids %}
+                      <option value="{{ e.doctor_id }}" selected>{{ doctors[e.doctor_id].name if e.doctor_id in doctors else '—' }}</option>
+                      {% endif %}
+                      {% for doc in doctors_list %}
+                      <option value="{{ doc.id }}" {% if doc.id == e.doctor_id %}selected{% endif %}>{{ doc.name }}</option>
+                      {% endfor %}
+                    </select>
+                    <input type="text" name="scale_type" class="form-control day-editor__scaletype" value="{{ e.scale_type or '' }}" list="scaletypes-{{ loc.id }}" placeholder="Tipo">
+                    <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.schedule_entry_delete', id=window.id, entry_id=e.id) }}" onsubmit="return confirm('Excluir este plantão?')">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                  </form>
+                </div>
+                {% endfor %}
+                {% if exceptions_by_loc_date.get((day, loc.id)) %}
+                {% set exc = exceptions_by_loc_date[(day, loc.id)] %}
+                <div class="day-editor__exception">
+                  <span><i class="bi bi-slash-circle"></i> Sem escala prevista</span>
+                  <form method="POST" action="{{ url_for('admin.schedule_exception_delete', id=window.id, exc_id=exc.id) }}">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <button type="submit" class="btn btn-sm btn-outline">Remover marcação</button>
+                  </form>
+                </div>
+                {% endif %}
+                {% for g in gaps_by_loc_date.get((day, loc.id), []) %}
+                  {% if g.acceptance %}
+                  <div class="day-editor__gap day-editor__gap--accepted">
+                    <span><i class="bi bi-check-circle"></i> {{ g.scale_type or 'Sem tipo' }} — aceito: "{{ g.acceptance.justification }}"</span>
+                    <form method="POST" action="{{ url_for('admin.coverage_acceptance_delete', id=window.id, acc_id=g.acceptance.id) }}">
+                      {{ csrf_token_field() }}
+                      <input type="hidden" name="month" value="{{ month }}">
+                      <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                      <button type="submit" class="btn btn-sm btn-outline">Remover aceite</button>
+                    </form>
+                  </div>
+                  {% else %}
+                  <form method="POST" action="{{ url_for('admin.coverage_acceptance_create', id=window.id) }}" class="day-editor__gap day-editor__gap--open">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="date" value="{{ day.isoformat() }}">
+                    <input type="hidden" name="location_id" value="{{ loc.id }}">
+                    <input type="hidden" name="scale_type" value="{{ g.scale_type or '' }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                    <span class="day-editor__gap-label"><i class="bi bi-exclamation-triangle"></i> Sem cobertura: {{ g.scale_type or '—' }}</span>
+                    <input type="text" name="justification" class="form-control" placeholder="Justificativa..." required>
+                    <button type="submit" class="btn btn-sm btn-outline">Aceitar</button>
+                  </form>
+                  {% endif %}
+                {% endfor %}
+                <div class="day-editor__add">
+                  <form method="POST" action="{{ url_for('admin.schedule_entry_create', id=window.id) }}" class="day-editor__entry-form">
+                    {{ csrf_token_field() }}
+                    <input type="hidden" name="date" value="{{ day.isoformat() }}">
+                    <input type="hidden" name="location_id" value="{{ loc.id }}">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+                    <select name="doctor_id" class="form-control day-editor__doctor">
+                      <option value="">Médico…</option>
+                      {% for doc in doctors_list %}
+                      <option value="{{ doc.id }}">{{ doc.name }}</option>
+                      {% endfor %}
+                    </select>
+                    <input type="text" name="scale_type" class="form-control day-editor__scaletype" placeholder="Tipo (ex: P1)" list="scaletypes-{{ loc.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline"><i class="bi bi-plus-lg"></i> Adicionar</button>
+                  </form>
+                </div>
+                {% if not editor_entries and not exceptions_by_loc_date.get((day, loc.id)) %}
+                <form method="POST" action="{{ url_for('admin.schedule_exception_create', id=window.id) }}" class="day-editor__mark-form">
+                  {{ csrf_token_field() }}
+                  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+                  <input type="hidden" name="location_id" value="{{ loc.id }}">
+                  <input type="hidden" name="month" value="{{ month }}">
+                  <button type="submit" class="btn btn-sm btn-outline">Marcar sem escala prevista</button>
+                </form>
+                {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </template>
+          {% endif %}
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      {% endfor %}
+    </div>
   </div>
-  {% else %}
-  <div class="card-body empty-state">
-    <p>Nenhuma entrada para este mês.</p>
-    {% if window.status == 'closed' %}
-    <p style="margin-top:.5rem;"><a href="{{ url_for('admin.schedule_generate', id=window.id) }}">Gerar escala</a> para ver os dados.</p>
-    {% endif %}
+  {% for loc in location_list %}
+  <datalist id="scaletypes-{{ loc.id }}">
+    {% for st in scale_types_by_location.get(loc.id, []) %}<option value="{{ st }}">{% endfor %}
+  </datalist>
+  {% endfor %}
+  <div class="cal-legend">
+    {% for l in location_list %}
+    <span><span class="cal-legend__dot cal-event--{{ loc_color[l.id] }}"></span>{{ l.name }}</span>
+    {% endfor %}
+    <span><span class="cal-legend__dot cal-legend__dot--gap"></span>Sem cobertura</span>
+    <span><span class="cal-legend__dot cal-legend__dot--exception"></span>Sem escala prevista</span>
   </div>
-  {% endif %}
+  <dialog class="day-editor-dialog">
+    <form method="dialog" class="day-editor-dialog__close">
+      <button type="submit" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+    </form>
+    <div class="day-editor-dialog__title"></div>
+    <div class="day-editor-dialog__body"></div>
+  </dialog>
 </div>
+
+{% include 'partials/open_gaps_table.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'cal-tooltip';
+  document.body.appendChild(tooltip);
+
+  function showTooltip(trigger) {
+    const panel = trigger.querySelector('.cal-tip__panel');
+    if (!panel) return;
+    tooltip.innerHTML = panel.innerHTML;
+    tooltip.style.display = 'block';
+
+    const rect = trigger.getBoundingClientRect();
+    let top = rect.bottom + 6;
+    let left = rect.left;
+    const tipRect = tooltip.getBoundingClientRect();
+
+    if (left + tipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - tipRect.width - 8;
+    }
+    if (left < 8) left = 8;
+    if (top + tipRect.height > window.innerHeight - 8) {
+      top = rect.top - tipRect.height - 6;
+    }
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  document.querySelectorAll('.cal-grid').forEach(grid => {
+    grid.addEventListener('mouseover', e => {
+      const trigger = e.target.closest('.cal-tip');
+      if (trigger) showTooltip(trigger);
+    });
+    grid.addEventListener('mouseout', e => {
+      const trigger = e.target.closest('.cal-tip');
+      if (trigger && !trigger.contains(e.relatedTarget)) hideTooltip();
+    });
+  });
+})();
+
+(function() {
+  const dialog = document.querySelector('.day-editor-dialog');
+  if (!dialog) return;
+  const title = dialog.querySelector('.day-editor-dialog__title');
+  const body = dialog.querySelector('.day-editor-dialog__body');
+
+  function openDayEditor(dateStr) {
+    const tpl = document.getElementById(`day-editor-${dateStr}`);
+    if (!tpl) return;
+    body.innerHTML = '';
+    body.appendChild(tpl.content.cloneNode(true));
+    const d = new Date(dateStr + 'T00:00:00');
+    title.textContent = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    dialog.showModal();
+  }
+
+  document.querySelectorAll('.cal-day__expand').forEach(btn => {
+    btn.addEventListener('click', () => openDayEditor(btn.dataset.date));
+  });
+
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const reopenDay = params.get('day');
+  if (reopenDay) {
+    openDayEditor(reopenDay);
+    params.delete('day');
+    const qs = params.toString();
+    history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+  }
+})();
+</script>
 {% endblock %}

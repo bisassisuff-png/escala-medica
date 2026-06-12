@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Locais — Escala Médica{% endblock %}
+{% block title %}Locais — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -24,7 +24,6 @@
         <tr>
           <th>Nome</th>
           <th>Tipo de escala</th>
-          <th>Endereço</th>
           <th>Situação</th>
           <th></th>
         </tr>
@@ -34,7 +33,6 @@
         <tr>
           <td><strong>{{ loc.name }}</strong></td>
           <td>{{ loc.scale_type or '—' }}</td>
-          <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ loc.address or '—' }}</td>
           <td>
             {% if loc.active %}
               <span class="badge badge-medico">Ativo</span>

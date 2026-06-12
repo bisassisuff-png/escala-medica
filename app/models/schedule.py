@@ -41,6 +41,8 @@ class FillingWindow(db.Model):
     schedules = db.relationship('Schedule', back_populates='window', lazy='dynamic')
     confirmations = db.relationship('DoctorWindowConfirmation', back_populates='window', lazy='dynamic')
     holidays = db.relationship('Holiday', back_populates='window', lazy='dynamic')
+    coverage_exceptions = db.relationship('CoverageException', back_populates='window', lazy='dynamic')
+    coverage_acceptances = db.relationship('CoverageAcceptance', back_populates='window', lazy='dynamic')
 
     def __repr__(self):
         return f'<FillingWindow {self.year} ({self.status})>'
@@ -109,6 +111,53 @@ class Holiday(db.Model):
 
     def __repr__(self):
         return f'<Holiday {self.name} {self.date}>'
+
+
+class CoverageException(db.Model):
+    __tablename__ = 'coverage_exceptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    window_id = db.Column(db.Integer, db.ForeignKey('filling_windows.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    window = db.relationship('FillingWindow', back_populates='coverage_exceptions')
+    location = db.relationship('Location')
+    creator = db.relationship('User')
+
+    __table_args__ = (
+        db.UniqueConstraint('window_id', 'date', 'location_id', name='uq_coverage_exception_window_date_location'),
+    )
+
+    def __repr__(self):
+        return f'<CoverageException window={self.window_id} date={self.date} location={self.location_id}>'
+
+
+class CoverageAcceptance(db.Model):
+    __tablename__ = 'coverage_acceptances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    window_id = db.Column(db.Integer, db.ForeignKey('filling_windows.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('locations.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    scale_type = db.Column(db.String(100))
+    justification = db.Column(db.Text, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    window = db.relationship('FillingWindow', back_populates='coverage_acceptances')
+    location = db.relationship('Location')
+    creator = db.relationship('User')
+
+    __table_args__ = (
+        db.UniqueConstraint('window_id', 'date', 'location_id', 'scale_type',
+                             name='uq_coverage_acceptance_window_date_location_scale'),
+    )
+
+    def __repr__(self):
+        return f'<CoverageAcceptance window={self.window_id} date={self.date} location={self.location_id}>'
 
 
 class Schedule(db.Model):

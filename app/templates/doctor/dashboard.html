@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Meu Painel — Escala Médica{% endblock %}
+{% block title %}Meu Painel — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -44,10 +44,17 @@
   <h2 style="font-size:1.1rem;">Meus plantões — {{ published_window.year }}</h2>
   <form method="GET" style="display:flex;gap:.35rem;flex-wrap:wrap;">
     {% for m in range(1,13) %}
+    {% if month_nav_disabled(published_window, m) %}
+    <span class="btn btn-sm btn-outline btn--disabled"
+          title="Sem dados importados para este mês">
+      {{ month_names[m] }}
+    </span>
+    {% else %}
     <a href="{{ url_for('doctor.dashboard', month=m) }}"
        class="btn btn-sm {% if m == month %}btn-primary{% else %}btn-outline{% endif %}">
       {{ month_names[m] }}
     </a>
+    {% endif %}
     {% endfor %}
   </form>
 </div>
@@ -101,4 +108,54 @@
 </div>
 {% endif %}
 {% endif %}
+
+<div class="card" style="margin-top:1.25rem;">
+  <div class="card-header mednews-header">
+    <img src="{{ url_for('static', filename='img/halftone-white.svg') }}" alt="" class="mednews-header__halftone">
+    <span class="mednews-label">MedNews</span>
+    {% if mednews_updated_at %}
+    <span class="mednews-updated">Atualizado em {{ mednews_updated_at.strftime('%d/%m/%Y') }}</span>
+    {% else %}
+    <span class="mednews-updated">Atualização automática às segundas-feiras</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if not mednews_svs and not mednews_jvs %}
+    <div class="empty-state" style="padding:1.5rem;">
+      <div class="empty-state__icon"><i class="bi bi-newspaper"></i></div>
+      <h3>Nenhuma notícia carregada ainda</h3>
+      <p>Atualização automática às segundas-feiras.</p>
+    </div>
+    {% else %}
+    <div class="mednews-grid">
+      <div class="mednews-col">
+        <div class="mednews-source-label">Society for Vascular Surgery — Notícias</div>
+        {% for item in mednews_svs %}
+        <div class="mednews-item">
+          <p class="mednews-item__title">{{ item.title }}</p>
+          {% if item.meta %}<div class="mednews-item__meta">{{ item.meta }}</div>{% endif %}
+          {% if item.summary %}<p class="mednews-item__summary">{{ item.summary }}</p>{% endif %}
+          <a href="{{ item.url }}" target="_blank" rel="noopener" class="mednews-item__link">Ler matéria completa →</a>
+        </div>
+        {% else %}
+        <p class="mednews-item__summary">Sem itens carregados.</p>
+        {% endfor %}
+      </div>
+      <div class="mednews-col">
+        <div class="mednews-source-label">Journal of Vascular Surgery — Últimas publicações</div>
+        {% for item in mednews_jvs %}
+        <div class="mednews-item">
+          <p class="mednews-item__title">{{ item.title }}</p>
+          {% if item.meta %}<div class="mednews-item__meta">{{ item.meta }}</div>{% endif %}
+          {% if item.summary %}<p class="mednews-item__summary">{{ item.summary }}</p>{% endif %}
+          <a href="{{ item.url }}" target="_blank" rel="noopener" class="mednews-item__link">Ler matéria completa →</a>
+        </div>
+        {% else %}
+        <p class="mednews-item__summary">Sem itens carregados.</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

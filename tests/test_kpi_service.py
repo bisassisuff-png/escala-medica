@@ -4,9 +4,10 @@ Testes do kpi_service: doctor_totals, avg_load, overloaded/underloaded.
 from datetime import date
 
 from app.extensions import db
+from app.models.location import LocationScaleRequirement, get_required_loc_keys
 from app.models.schedule import Schedule
-from app.services.kpi_service import get_dashboard_data, get_doctor_month_stats
-from tests.conftest import make_doctor, make_location, make_window
+from app.services.kpi_service import get_coverage_summary, get_dashboard_data, get_doctor_month_stats
+from tests.conftest import make_doctor, make_link, make_location, make_window
 
 
 def _add_schedule(app, window_id, doctor_id, location_id, day, scale_type='DIARISTA'):
@@ -112,6 +113,53 @@ def test_dashboard_data_empty_window(app):
     with app.app_context():
         data = get_dashboard_data(9999, month=1)
         assert data == {}
+
+
+def test_get_required_loc_keys_default_all_required(app):
+    """Sem registros em LocationScaleRequirement, todos os pares (local, tipo) ativos são obrigatórios."""
+    doc = make_doctor(app)
+    loc = make_location(app, name='CIAS')
+    make_link(app, doc.id, loc.id, scale_type='P1')
+    make_link(app, doc.id, loc.id, scale_type='P2')
+
+    with app.app_context():
+        keys = get_required_loc_keys()
+        assert (loc.id, 'P1') in keys
+        assert (loc.id, 'P2') in keys
+
+
+def test_get_required_loc_keys_excludes_optional(app):
+    """Um registro required=False remove o par (local, tipo) do conjunto de obrigatórios."""
+    doc = make_doctor(app)
+    loc = make_location(app, name='CIAS')
+    make_link(app, doc.id, loc.id, scale_type='P1')
+    make_link(app, doc.id, loc.id, scale_type='P2')
+
+    with app.app_context():
+        db.session.add(LocationScaleRequirement(location_id=loc.id, scale_type='P2', required=False))
+        db.session.commit()
+
+        keys = get_required_loc_keys()
+        assert (loc.id, 'P1') in keys
+        assert (loc.id, 'P2') not in keys
+
+
+def test_coverage_summary_excludes_optional_scale_type(app):
+    """get_coverage_summary não conta pares (local, tipo) marcados como opcionais."""
+    doc = make_doctor(app)
+    loc = make_location(app, name='CIAS')
+    make_link(app, doc.id, loc.id, scale_type='P1')
+    make_link(app, doc.id, loc.id, scale_type='P2')
+    w = make_window(app, year=2025, status='published')
+
+    with app.app_context():
+        total_before = get_coverage_summary(w.id, month=1)['total']
+
+        db.session.add(LocationScaleRequirement(location_id=loc.id, scale_type='P2', required=False))
+        db.session.commit()
+
+        total_after = get_coverage_summary(w.id, month=1)['total']
+        assert total_after == total_before // 2
 
 
 def test_weekday_counts(app):
