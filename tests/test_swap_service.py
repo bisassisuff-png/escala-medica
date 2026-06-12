@@ -9,7 +9,7 @@ from app.extensions import db
 from app.models.schedule import Schedule, DoctorRestriction
 from app.models.swap import ScheduleSwap, SwapNotification
 from app.services.swap_service import (
-    request_swap, accept_swap, cancel_swap, admin_force_swap,
+    request_swap, accept_swap, cancel_swap, admin_force_swap, build_swap_view_data,
 )
 from tests.conftest import make_doctor, make_location, make_link, make_window
 
@@ -117,22 +117,84 @@ def test_accept_swap_reassigns_schedule(app):
         assert updated_swap.target_doctor_id == doc2.id
 
 
-def test_accept_swap_not_notified_raises(app):
-    """Médico não notificado não pode aceitar a troca."""
+def test_accept_swap_not_eligible_raises(app):
+    """Médico sem vínculo elegível não pode aceitar a troca."""
     doc1 = make_doctor(app, login='doc1', crm='C001')
     doc2 = make_doctor(app, login='doc2', crm='C002')
     doc3 = make_doctor(app, login='doc3', crm='C003')
     loc = make_location(app)
     make_link(app, doc1.id, loc.id, 'DIARISTA')
     make_link(app, doc2.id, loc.id, 'DIARISTA')
-    # doc3 sem vínculo com o local → não será notificado
+    # doc3 sem vínculo com o local → não é elegível
     w = make_window(app, year=2025)
     sched_id = _make_schedule(app, doc1.id, loc.id, w.id)
 
     with app.app_context():
         swap = request_swap(sched_id, doc1.id)
-        with pytest.raises(ValueError, match='não foi notificado'):
+        with pytest.raises(ValueError, match='habilitado'):
             accept_swap(swap.id, doc3.id)
+
+
+def test_accept_swap_allows_newly_eligible_doctor_without_notification(app):
+    """Médico que ganhou vínculo após a solicitação (sem SwapNotification)
+    deve poder aceitar, pois a elegibilidade é verificada ao vivo."""
+    doc1 = make_doctor(app, login='doc1', crm='C001')
+    doc2 = make_doctor(app, login='doc2', crm='C002')
+    doc3 = make_doctor(app, login='doc3', crm='C003')
+    loc = make_location(app)
+    make_link(app, doc1.id, loc.id, 'DIARISTA')
+    make_link(app, doc2.id, loc.id, 'DIARISTA')
+    w = make_window(app, year=2025)
+    sched_id = _make_schedule(app, doc1.id, loc.id, w.id)
+
+    with app.app_context():
+        swap = request_swap(sched_id, doc1.id)
+
+        notifs = SwapNotification.query.filter_by(swap_id=swap.id).all()
+        notified_ids = {n.notified_doctor_id for n in notifs}
+        assert doc3.id not in notified_ids
+
+        # doc3 ganha vínculo após a solicitação
+        make_link(app, doc3.id, loc.id, 'DIARISTA')
+
+        accept_swap(swap.id, doc3.id)
+        updated = db.session.get(Schedule, sched_id)
+        assert updated.doctor_id == doc3.id
+
+
+def test_build_swap_view_data_open_vs_resolved(app):
+    """Para uma troca aberta, retorna médicos elegíveis e dias=0; após aceita,
+    não exibe mais médicos disponíveis nem dias em aberto."""
+    doc1 = make_doctor(app, login='doc1', crm='C001')
+    doc2 = make_doctor(app, login='doc2', crm='C002')
+    loc = make_location(app)
+    make_link(app, doc1.id, loc.id, 'DIARISTA')
+    make_link(app, doc2.id, loc.id, 'DIARISTA')
+    w = make_window(app, year=2025)
+    sched_id = _make_schedule(app, doc1.id, loc.id, w.id)
+
+    with app.app_context():
+        from app.models.user import User
+        doctors = {u.id: u for u in User.query.all()}
+
+        swap = request_swap(sched_id, doc1.id)
+
+        eligible_by_swap, eligible_names_by_swap, days_open_by_swap = build_swap_view_data(
+            [swap], doctors
+        )
+        assert doc2.id in eligible_by_swap[swap.id]
+        assert doctors[doc2.id].name in eligible_names_by_swap[swap.id]
+        assert days_open_by_swap[swap.id] == 0
+
+        accept_swap(swap.id, doc2.id)
+        swap = db.session.get(ScheduleSwap, swap.id)
+
+        eligible_by_swap, eligible_names_by_swap, days_open_by_swap = build_swap_view_data(
+            [swap], doctors
+        )
+        assert eligible_by_swap[swap.id] == []
+        assert eligible_names_by_swap[swap.id] == '—'
+        assert days_open_by_swap[swap.id] is None
 
 
 def test_cancel_swap(app):

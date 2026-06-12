@@ -1,98 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Trocas — Escala Médica{% endblock %}
+{% block title %}Trocas — Vascular Vix AI HUB{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <h1>Trocas de Plantão</h1>
 </div>
 
-<!-- Trocas disponíveis para aceitar -->
-{% if available %}
-<div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--warning);">
-  <div class="card-header">
-    <h3><i class="bi bi-bell" style="color:var(--warning);"></i> Trocas disponíveis para você ({{ available|length }})</h3>
-  </div>
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Local</th><th>Tipo</th><th>Solicitante</th><th>Solicitado em</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for sw in available %}
-        {% set sched = sw.schedule %}
-        <tr>
-          <td><strong>{{ sched.date.strftime('%d/%m/%Y (%a)') }}</strong></td>
-          <td>{{ locations[sched.location_id].name if sched.location_id in locations else '—' }}</td>
-          <td>{{ sched.scale_type or '—' }}</td>
-          <td>{{ doctors[sw.requester_id].name if sw.requester_id in doctors else '—' }}</td>
-          <td style="color:var(--text-muted);">{{ sw.requested_at.strftime('%d/%m %H:%M') }}</td>
-          <td>
-            <form method="POST" action="{{ url_for('doctor.swaps_accept', swap_id=sw.id) }}">
-              {{ csrf_token_field() }}
-              <button class="btn btn-sm btn-primary"
-                onclick="return confirm('Aceitar este plantão em {{ sched.date.strftime('%d/%m/%Y') }}?')">
-                <i class="bi bi-check2"></i> Aceitar
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
-
 <!-- Minhas solicitações -->
-<div class="card">
+<div class="card" style="margin-bottom:1.25rem;">
   <div class="card-header">
     <h3>Minhas solicitações</h3>
     <span style="color:var(--text-muted);font-size:.875rem;">{{ my_swaps|length }}</span>
   </div>
   {% if my_swaps %}
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Local</th><th>Status</th><th>Aceito por</th><th>Solicitado em</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for sw in my_swaps %}
-        {% set sched = sw.schedule %}
-        <tr>
-          <td><strong>{{ sched.date.strftime('%d/%m/%Y (%a)') }}</strong></td>
-          <td>{{ locations[sched.location_id].name if sched.location_id in locations else '—' }}</td>
-          <td>
-            {% if sw.status == 'open' %}
-              <span class="badge" style="background:#fef7e0;color:#7f5c00;">Aguardando</span>
-            {% elif sw.status == 'accepted' %}
-              <span class="badge badge-medico">Aceita</span>
-            {% elif sw.status == 'cancelled' %}
-              <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Cancelada</span>
-            {% elif sw.status == 'rejected' %}
-              <span class="badge" style="background:#fce8e6;color:#c5221f;">Rejeitada</span>
-            {% endif %}
-          </td>
-          <td>{{ doctors[sw.target_doctor_id].name if sw.target_doctor_id and sw.target_doctor_id in doctors else '—' }}</td>
-          <td style="color:var(--text-muted);">{{ sw.requested_at.strftime('%d/%m %H:%M') }}</td>
-          <td>
-            {% if sw.status == 'open' %}
-            <form method="POST" action="{{ url_for('doctor.swaps_cancel', swap_id=sw.id) }}">
-              {{ csrf_token_field() }}
-              <button class="btn btn-sm btn-danger"
-                onclick="return confirm('Cancelar esta solicitação?')">Cancelar</button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {% set swaps = my_swaps %}
+  {% set action_mode = 'cancel' %}
+  {% include 'partials/swap_table.html' %}
   {% else %}
   <div class="card-body empty-state">
     <div class="empty-state__icon"><i class="bi bi-arrow-left-right"></i></div>
     <h3>Nenhuma solicitação</h3>
     <p>Para solicitar uma troca, acesse <a href="{{ url_for('doctor.schedule') }}">Minha Escala</a> e clique em "Solicitar troca".</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Trocas em aberto -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="bi bi-bell" style="color:var(--warning);"></i> Trocas em aberto</h3>
+    <span style="color:var(--text-muted);font-size:.875rem;">{{ open_swaps|length }}</span>
+  </div>
+  {% if open_swaps %}
+  {% set swaps = open_swaps %}
+  {% set action_mode = 'accept' %}
+  {% include 'partials/swap_table.html' %}
+  {% else %}
+  <div class="card-body empty-state">
+    <div class="empty-state__icon"><i class="bi bi-check-circle"></i></div>
+    <h3>Nenhuma troca em aberto</h3>
+    <p>Não há solicitações de troca pendentes no momento.</p>
   </div>
   {% endif %}
 </div>

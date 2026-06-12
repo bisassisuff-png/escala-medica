@@ -1,0 +1,76 @@
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Local</th>
+        <th>Tipo</th>
+        <th>Solicitante</th>
+        <th>Médicos disponíveis</th>
+        <th>Dias em aberto</th>
+        <th>Status</th>
+        <th>Aceito por</th>
+        <th>Solicitado em</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sw in swaps %}
+      {% set sched = sw.schedule %}
+      <tr>
+        <td><strong>{{ sched.date.strftime('%d/%m/%Y (%a)') }}</strong></td>
+        <td>{{ locations[sched.location_id].name if sched.location_id in locations else '—' }}</td>
+        <td>{{ sched.scale_type or '—' }}</td>
+        <td>{{ doctors[sw.requester_id].name if sw.requester_id in doctors else '—' }}</td>
+        <td style="font-size:.8125rem;color:var(--text-muted);">{{ eligible_names_by_swap.get(sw.id, '—') }}</td>
+        <td>{{ days_open_by_swap.get(sw.id) if days_open_by_swap.get(sw.id) is not none else '—' }}</td>
+        <td>
+          {% if sw.status == 'open' %}
+            <span class="badge" style="background:#fef7e0;color:#7f5c00;">Aberta</span>
+          {% elif sw.status == 'accepted' %}
+            <span class="badge badge-medico">Aceita</span>
+          {% elif sw.status == 'cancelled' %}
+            <span class="badge" style="background:#f1f3f4;color:var(--text-muted);">Cancelada</span>
+          {% elif sw.status == 'rejected' %}
+            <span class="badge" style="background:#fce8e6;color:#c5221f;">Rejeitada</span>
+          {% endif %}
+        </td>
+        <td>{{ doctors[sw.target_doctor_id].name if sw.target_doctor_id and sw.target_doctor_id in doctors else '—' }}</td>
+        <td style="color:var(--text-muted);">{{ sw.requested_at.strftime('%d/%m %H:%M') }}</td>
+        <td>
+          {% if action_mode == 'cancel' and sw.status == 'open' %}
+          <form method="POST" action="{{ url_for('doctor.swaps_cancel', swap_id=sw.id) }}">
+            {{ csrf_token_field() }}
+            <button class="btn btn-sm btn-danger"
+              onclick="return confirm('Cancelar esta solicitação?')">Cancelar</button>
+          </form>
+          {% elif action_mode == 'accept' and sw.status == 'open' and current_user.id in eligible_by_swap.get(sw.id, []) %}
+          <form method="POST" action="{{ url_for('doctor.swaps_accept', swap_id=sw.id) }}">
+            {{ csrf_token_field() }}
+            <button class="btn btn-sm btn-primary"
+              onclick="return confirm('Aceitar este plantão em {{ sched.date.strftime('%d/%m/%Y') }}?')">
+              <i class="bi bi-check2"></i> Aceitar
+            </button>
+          </form>
+          {% elif action_mode == 'admin' and sw.status == 'open' %}
+          <form method="POST" action="{{ url_for('admin.swaps_force', swap_id=sw.id) }}"
+                style="display:flex;gap:.35rem;align-items:center;">
+            {{ csrf_token_field() }}
+            <select name="target_doctor_id" class="form-control" style="width:auto;padding:.3rem .6rem;font-size:.85rem;">
+              <option value="">Médico…</option>
+              {% for doc_id, doc in doctors.items() %}
+                {% if doc.role == 'medico' and doc.active and doc_id != sw.requester_id %}
+                <option value="{{ doc_id }}">{{ doc.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-primary"
+              onclick="return confirm('Efetivar esta troca diretamente?')">Efetivar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

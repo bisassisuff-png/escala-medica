@@ -8,7 +8,7 @@ Fluxo:
 4. Médico notificado aceita → schedule.doctor_id é reatribuído, swap fechado
 5. ADMIN pode forçar qualquer troca sem restrições
 """
-from datetime import datetime
+from datetime import date, datetime
 
 from app.extensions import db
 from app.models.schedule import Schedule, DoctorRestriction
@@ -16,7 +16,7 @@ from app.models.swap import ScheduleSwap, SwapNotification
 from app.models.location import DoctorLocationLink
 
 
-def _find_eligible(schedule: Schedule) -> list[int]:
+def find_eligible_doctors(schedule: Schedule) -> list[int]:
     """Médicos que podem cobrir o slot: vínculo ativo + livres no dia + sem restrição."""
     linked_ids = {
         lk.doctor_id
@@ -67,7 +67,7 @@ def request_swap(schedule_id: int, requester_id: int) -> ScheduleSwap:
     db.session.add(swap)
     db.session.flush()
 
-    eligible = _find_eligible(schedule)
+    eligible = find_eligible_doctors(schedule)
     for doctor_id in eligible:
         db.session.add(SwapNotification(swap_id=swap.id, notified_doctor_id=doctor_id))
 
@@ -81,13 +81,10 @@ def accept_swap(swap_id: int, accepting_doctor_id: int) -> None:
     if not swap or swap.status != 'open':
         raise ValueError('Esta troca não está mais disponível.')
 
-    notif = SwapNotification.query.filter_by(
-        swap_id=swap_id, notified_doctor_id=accepting_doctor_id
-    ).first()
-    if not notif:
-        raise ValueError('Você não foi notificado para esta troca.')
-
     schedule = db.session.get(Schedule, swap.schedule_id)
+    if accepting_doctor_id not in find_eligible_doctors(schedule):
+        raise ValueError('Você não está habilitado a cobrir este plantão.')
+
     schedule.doctor_id = accepting_doctor_id
 
     swap.target_doctor_id = accepting_doctor_id
@@ -126,3 +123,24 @@ def admin_force_swap(swap_id: int, target_doctor_id: int) -> None:
     swap.resolved_at = datetime.utcnow()
     SwapNotification.query.filter_by(swap_id=swap_id).update({'seen': True})
     db.session.commit()
+
+
+def build_swap_view_data(swaps: list[ScheduleSwap], doctors: dict) -> tuple[dict, dict, dict]:
+    """Dados auxiliares de exibição para uma lista de trocas, indexados por swap.id:
+    médicos disponíveis para cobrir o plantão (elegibilidade ao vivo, só para trocas
+    'open') e há quantos dias a troca está em aberto."""
+    eligible_by_swap = {}
+    eligible_names_by_swap = {}
+    days_open_by_swap = {}
+    today = date.today()
+    for sw in swaps:
+        if sw.status == 'open':
+            eligible_ids = find_eligible_doctors(sw.schedule)
+            days_open_by_swap[sw.id] = (today - sw.requested_at.date()).days
+        else:
+            eligible_ids = []
+            days_open_by_swap[sw.id] = None
+        eligible_by_swap[sw.id] = eligible_ids
+        names = [doctors[d].name for d in eligible_ids if d in doctors]
+        eligible_names_by_swap[sw.id] = ', '.join(names) if names else '—'
+    return eligible_by_swap, eligible_names_by_swap, days_open_by_swap
