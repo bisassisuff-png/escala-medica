@@ -36,5 +36,4 @@ class DoctorForm(FlaskForm):
 
 class LocationForm(FlaskForm):
     name = StringField('Nome', validators=[DataRequired(), Length(2, 200)])
-    scale_type = StringField('Tipo de escala', validators=[Optional(), Length(max=100)])
     submit = SubmitField('Salvar')

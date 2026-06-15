@@ -239,10 +239,14 @@ def test_admin_creates_location(app, client):
     login_as(client, 'admin', 'admin123')
     res = client.post('/admin/locais/novo', data={
         'name': 'Hospital ABC',
-        'scale_type': 'PLANTONISTA',
     }, follow_redirects=True)
     assert res.status_code == 200
     assert b'Hospital ABC' in res.data or b'cadastrad' in res.data.lower()
+
+    from app.models.location import Location
+    with app.app_context():
+        loc = Location.query.filter_by(name='Hospital ABC').first()
+        assert loc.scale_type == '24h'
 
 
 def test_admin_lists_locations(app, client):

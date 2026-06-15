@@ -19,9 +19,8 @@
       </div>
 
       <div class="form-group">
-        {{ form.scale_type.label(class="form-label") }}
-        {{ form.scale_type(class="form-control" + (" is-invalid" if form.scale_type.errors else ""), placeholder="Ex: Plantão 12h, Ambulatório…") }}
-        {% for e in form.scale_type.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <label class="form-label">Tipo de escala</label>
+        <input type="text" class="form-control" value="24h" disabled readonly>
       </div>
 
       <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">

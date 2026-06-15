@@ -97,7 +97,7 @@ def routines():
             frequency=form.frequency.data,
             day_of_week=form.day_of_week.data,
             week_of_month=form.week_of_month.data if form.week_of_month.data else None,
-            scale_type=form.scale_type.data.strip() or None,
+            scale_type='24h',
         )
         db.session.add(routine)
         audit('add_routine', 'DoctorRoutine', None, {'window_id': window.id})

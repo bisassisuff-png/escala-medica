@@ -26,8 +26,8 @@
           {{ form.location_id(class="form-control") }}
         </div>
         <div class="form-group">
-          {{ form.scale_type.label(class="form-label") }}
-          {{ form.scale_type(class="form-control", placeholder="Plantão 12h, Ambulatório…") }}
+          <label class="form-label">Tipo de escala</label>
+          <input type="text" class="form-control" value="24h" disabled readonly>
         </div>
         <div class="form-group">
           {{ form.frequency.label(class="form-label") }}

@@ -202,7 +202,7 @@ def locations_new():
     if form.validate_on_submit():
         loc = Location(
             name=form.name.data.strip(),
-            scale_type=form.scale_type.data.strip() or None,
+            scale_type='24h',
         )
         db.session.add(loc)
         db.session.flush()
@@ -223,7 +223,6 @@ def locations_edit(id):
     form = LocationForm(obj=loc)
     if form.validate_on_submit():
         loc.name = form.name.data.strip()
-        loc.scale_type = form.scale_type.data.strip() or None
         audit('edit_location', 'Location', loc.id, {'name': loc.name})
         db.session.commit()
         flash(f'Local "{loc.name}" atualizado.', 'success')

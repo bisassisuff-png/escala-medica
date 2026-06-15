@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import SelectField, StringField, DateField, TextAreaField, SubmitField
+from wtforms import SelectField, DateField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Optional, ValidationError
 from datetime import date
 
@@ -20,7 +20,6 @@ FREQ_CHOICES = [
 
 class DoctorRoutineForm(FlaskForm):
     location_id = SelectField('Local de atendimento', coerce=int, validators=[DataRequired()])
-    scale_type = StringField('Tipo de escala', validators=[Optional()])
     frequency = SelectField('Frequência', choices=FREQ_CHOICES, validators=[DataRequired()])
     day_of_week = SelectField('Dia da semana', choices=DAY_CHOICES, coerce=int, validators=[DataRequired()])
     week_of_month = SelectField('Semana do mês', choices=[(0, '—')] + WEEK_CHOICES,
@@ -36,7 +35,13 @@ class DoctorRoutineForm(FlaskForm):
                      .join(DoctorLocationLink.location)
                      .order_by('name')
                      .all())
-            self.location_id.choices = [(lk.location_id, lk.location.name) for lk in links]
+            seen = set()
+            choices = []
+            for lk in links:
+                if lk.location_id not in seen:
+                    seen.add(lk.location_id)
+                    choices.append((lk.location_id, lk.location.name))
+            self.location_id.choices = choices
         else:
             self.location_id.choices = []
 
