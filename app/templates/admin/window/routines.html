@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Semana Padrão — {{ window.year }}</h1>
+    <h1>{% if use_biweekly %}Semanas Padrão{% else %}Semana Padrão{% endif %} — {{ window.year }}</h1>
     <span style="color:var(--text-muted);font-size:.9rem;">
       {% if window.status == 'draft' %}Rascunho
       {% elif window.status == 'open' %}Aberta para preenchimento
@@ -17,6 +17,84 @@
 </div>
 
 {% if positions %}
+
+{% if use_biweekly %}
+{# ── Novo sistema biweekly (2027+): dois grids ── #}
+
+{% for week_num, week_grid, week_label, week_desc in [
+    (1, routines_grid_1, 'Semana 1', 'Semana que contém 1º de janeiro e alterna a cada 2 semanas'),
+    (2, routines_grid_2, 'Semana 2', 'Semana seguinte à Semana 1 e alterna a cada 2 semanas')
+] %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <strong style="font-size:1rem;">{{ week_label }}</strong>
+      <span style="color:var(--text-muted);font-size:.8rem;margin-left:.5rem;">{{ week_desc }}</span>
+    </div>
+    <span class="badge" style="background:{% if week_num == 1 %}var(--primary-light,#e8f0fe);color:var(--primary){% else %}#f0fdf4;color:#166534{% endif %};padding:.2rem .6rem;border-radius:12px;font-size:.78rem;font-weight:600;">S{{ week_num }}</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="routines-week-grid">
+      <thead>
+        <tr>
+          <th style="min-width:140px;">Posição</th>
+          {% for d in day_names %}
+          <th style="min-width:130px;text-align:center;">{{ d }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for loc, scale in positions %}
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">
+            {{ loc.name }}<br>
+            <span style="font-weight:400;color:var(--text-muted);font-size:.8rem;">{{ scale }}</span>
+          </td>
+          {% for day in range(7) %}
+          {% set cell_routines = week_grid.get((day, loc.id, scale), []) %}
+          <td style="vertical-align:top;padding:.5rem;">
+            <div style="display:flex;flex-direction:column;gap:.35rem;">
+              {% for r in cell_routines %}
+              <div class="routine-chip {% if r.week_number is none %}routine-chip--semanal{% endif %}">
+                <span class="routine-chip__name">{{ r.doctor.name.split()[0] }}</span>
+                {% if r.week_number is none %}
+                <span class="routine-chip__badge" title="Aparece toda semana">∞</span>
+                {% endif %}
+                {% if editable %}
+                <form method="POST"
+                      action="{{ url_for('admin.window_routines_delete', id=window.id, routine_id=r.id) }}"
+                      style="display:inline;margin-left:.15rem;"
+                      onsubmit="return confirm('Remover esta rotina?')">
+                  {{ csrf_token_field() }}
+                  <button type="submit" class="routine-chip__del" title="Remover"><i class="bi bi-x"></i></button>
+                </form>
+                {% endif %}
+              </div>
+              {% endfor %}
+              {% if editable %}
+              <button type="button" class="btn-routine-add"
+                      data-loc="{{ loc.id }}"
+                      data-scale="{{ scale }}"
+                      data-day="{{ day }}"
+                      data-week="{{ week_num }}"
+                      data-label="{{ week_label }} · {{ loc.name }} · {{ scale }} · {{ day_names[day] }}"
+                      title="Adicionar rotina">
+                <i class="bi bi-plus"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+{# ── Sistema legado (2026): grid único ── #}
 <div class="card" style="overflow-x:auto;">
   <table class="routines-week-grid">
     <thead>
@@ -73,6 +151,8 @@
     </tbody>
   </table>
 </div>
+{% endif %}
+
 {% else %}
 <div class="card">
   <div class="card-body empty-state">
@@ -91,6 +171,9 @@
     <input type="hidden" name="location_id" id="modal-location-id">
     <input type="hidden" name="scale_type" id="modal-scale-type">
     <input type="hidden" name="day_of_week" id="modal-day-of-week">
+    {% if use_biweekly %}
+    <input type="hidden" name="week_number" id="modal-week-number" value="">
+    {% endif %}
 
     <div class="day-editor-dialog__header">
       <strong id="modal-title">Adicionar rotina</strong>
@@ -112,12 +195,18 @@
         <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Frequência</label>
         <select name="frequency" id="modal-frequency" required
                 style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem;">
+          {% if use_biweekly %}
+          <option value="weekly">Semanal (toda semana)</option>
+          <option value="biweekly">Quinzenal (só esta semana)</option>
+          {% else %}
           <option value="weekly">Semanal</option>
           <option value="biweekly">Quinzenal</option>
           <option value="monthly">Mensal</option>
+          {% endif %}
         </select>
       </div>
 
+      {% if not use_biweekly %}
       <div id="week-row" style="display:none;">
         <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Semana do mês</label>
         <select name="week_of_month" id="modal-week"
@@ -130,6 +219,7 @@
           <option value="5">5ª semana</option>
         </select>
       </div>
+      {% endif %}
     </div>
 
     <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
@@ -145,8 +235,10 @@
 .routines-week-grid td { border:1px solid var(--border);padding:.5rem .75rem; }
 .routines-week-grid thead th { background:var(--surface-secondary,#f8f9fa);font-size:.8rem;text-transform:uppercase;letter-spacing:.04em; }
 .routine-chip { display:inline-flex;align-items:center;gap:.25rem;background:var(--primary-light,#e8f0fe);color:var(--primary);border-radius:20px;padding:.2rem .6rem;font-size:.78rem;white-space:nowrap; }
+.routine-chip--semanal { background:#fef3c7;color:#92400e; }
 .routine-chip__name { font-weight:600; }
 .routine-chip__freq { opacity:.75; }
+.routine-chip__badge { font-size:.85rem;opacity:.8;font-weight:700; }
 .routine-chip__del { background:none;border:none;cursor:pointer;color:inherit;opacity:.7;padding:0;line-height:1;font-size:.9rem; }
 .routine-chip__del:hover { opacity:1; }
 .btn-routine-add { background:none;border:1px dashed var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:.15rem .5rem;transition:border-color .15s,color .15s; }
@@ -155,6 +247,7 @@
 
 <script>
 const doctorsByPosition = {{ doctors_json | safe }};
+const USE_BIWEEKLY = {{ 'true' if use_biweekly else 'false' }};
 
 document.querySelectorAll('.btn-routine-add').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -168,6 +261,10 @@ document.querySelectorAll('.btn-routine-add').forEach(btn => {
     document.getElementById('modal-day-of-week').value = day;
     document.getElementById('modal-title').textContent = label;
 
+    if (USE_BIWEEKLY) {
+      document.getElementById('modal-week-number').value = btn.dataset.week || '';
+    }
+
     const key = `${locId}:${scale}`;
     const docs = doctorsByPosition[key] || [];
     const sel  = document.getElementById('modal-doctor');
@@ -180,16 +277,20 @@ document.querySelectorAll('.btn-routine-add').forEach(btn => {
     });
 
     document.getElementById('modal-frequency').value = 'weekly';
-    document.getElementById('modal-week').value = '0';
-    document.getElementById('week-row').style.display = 'none';
+    if (!USE_BIWEEKLY) {
+      document.getElementById('modal-week').value = '0';
+      document.getElementById('week-row').style.display = 'none';
+    }
 
     document.getElementById('add-routine-modal').showModal();
   });
 });
 
 document.getElementById('modal-frequency').addEventListener('change', function() {
-  const wr = document.getElementById('week-row');
-  wr.style.display = (this.value === 'biweekly' || this.value === 'monthly') ? '' : 'none';
+  if (!USE_BIWEEKLY) {
+    const wr = document.getElementById('week-row');
+    wr.style.display = (this.value === 'biweekly' || this.value === 'monthly') ? '' : 'none';
+  }
 });
 
 ['modal-close','modal-cancel'].forEach(id => {

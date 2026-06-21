@@ -460,6 +460,18 @@ def window_routines(id):
     for r in routines:
         routines_grid[(r.day_of_week, r.location_id, r.scale_type)].append(r)
 
+    # Modo biweekly para janelas 2027+: dois grids independentes
+    use_biweekly = window.year > 2026
+    routines_grid_1 = defaultdict(list)
+    routines_grid_2 = defaultdict(list)
+    if use_biweekly:
+        for r in routines:
+            key = (r.day_of_week, r.location_id, r.scale_type)
+            if r.week_number is None or r.week_number == 1:
+                routines_grid_1[key].append(r)
+            if r.week_number is None or r.week_number == 2:
+                routines_grid_2[key].append(r)
+
     # JSON para o JS popular o select de médico no modal
     doctors_json = {
         f'{loc_id}:{scale}': [{'id': u.id, 'name': u.name} for u in docs]
@@ -472,7 +484,11 @@ def window_routines(id):
 
     return render_template('admin/window/routines.html',
                            window=window, positions=positions,
-                           routines_grid=routines_grid, editable=editable,
+                           routines_grid=routines_grid,
+                           use_biweekly=use_biweekly,
+                           routines_grid_1=routines_grid_1,
+                           routines_grid_2=routines_grid_2,
+                           editable=editable,
                            day_names=day_names, freq_short=freq_short,
                            doctors_json=json.dumps(doctors_json))
 
@@ -481,7 +497,6 @@ def window_routines(id):
 @login_required
 @admin_required
 def window_routines_add(id):
-    from app.forms.admin import AdminRoutineForm
     window = db.session.get(FillingWindow, id) or abort(404)
     if window.status not in ('draft', 'open'):
         flash('Só é possível editar rotinas em janelas em rascunho ou abertas.', 'warning')
@@ -491,20 +506,66 @@ def window_routines_add(id):
     scale_type = request.form.get('scale_type', '')
     day_of_week = request.form.get('day_of_week', type=int)
 
-    # Busca médicos elegíveis para popular o form de validação
     links = DoctorLocationLink.query.filter_by(
         location_id=location_id, scale_type=scale_type, active=True
     ).all()
-    doctor_choices = [(lk.doctor_id, lk.doctor.name) for lk in links]
+    valid_ids = {lk.doctor_id for lk in links}
 
+    use_biweekly = window.year > 2026
+
+    if use_biweekly:
+        # Novo sistema: validação manual + CSRF via flask-wtf
+        from flask_wtf.csrf import validate_csrf
+        try:
+            validate_csrf(request.form.get('csrf_token'))
+        except Exception:
+            abort(400)
+
+        frequency = request.form.get('frequency', '')
+        if frequency not in ('weekly', 'biweekly'):
+            flash('Frequência inválida.', 'danger')
+            return redirect(url_for('admin.window_routines', id=id))
+
+        week_number = None
+        if frequency == 'biweekly':
+            week_number = request.form.get('week_number', type=int)
+            if week_number not in (1, 2):
+                flash('Semana inválida.', 'danger')
+                return redirect(url_for('admin.window_routines', id=id))
+
+        doctor_id = request.form.get('doctor_id', type=int)
+        if not doctor_id or doctor_id not in valid_ids:
+            flash('Médico inválido ou não vinculado a esta posição.', 'danger')
+            return redirect(url_for('admin.window_routines', id=id))
+
+        routine = DoctorRoutine(
+            doctor_id=doctor_id,
+            location_id=location_id,
+            scale_type=scale_type,
+            window_id=id,
+            frequency=frequency,
+            day_of_week=day_of_week,
+            week_number=week_number,
+        )
+        db.session.add(routine)
+        audit('add_routine', 'DoctorRoutine', None, {
+            'window_id': id, 'doctor_id': doctor_id,
+            'location_id': location_id, 'scale_type': scale_type,
+            'day': day_of_week, 'week_number': week_number,
+        })
+        db.session.commit()
+        flash('Rotina adicionada.', 'success')
+        return redirect(url_for('admin.window_routines', id=id))
+
+    # Sistema legado 2026: usa AdminRoutineForm
+    from app.forms.admin import AdminRoutineForm
+    doctor_choices = [(lk.doctor_id, lk.doctor.name) for lk in links]
     form = AdminRoutineForm(doctor_choices=doctor_choices)
     if not form.validate_on_submit():
         for field, errs in form.errors.items():
             flash(f'{field}: {"; ".join(errs)}', 'danger')
         return redirect(url_for('admin.window_routines', id=id))
 
-    # Valida vínculo do médico escolhido com a posição
-    valid_ids = {lk.doctor_id for lk in links}
     if form.doctor_id.data not in valid_ids:
         flash('Médico não vinculado a esta posição.', 'danger')
         return redirect(url_for('admin.window_routines', id=id))

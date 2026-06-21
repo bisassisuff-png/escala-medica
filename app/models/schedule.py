@@ -62,6 +62,7 @@ class DoctorRoutine(db.Model):
     day_of_week = db.Column(db.Integer)      # 0=seg … 6=dom
     week_of_month = db.Column(db.Integer)    # 1-5, NULL se weekly
     scale_type = db.Column(db.String(100))
+    week_number = db.Column(db.Integer, nullable=True)  # NULL=semanal, 1=S1, 2=S2 (2027+)
     confirmed = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 

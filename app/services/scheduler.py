@@ -23,6 +23,15 @@ def _week_of_month(d: date) -> int:
     return (d.day - 1) // 7 + 1
 
 
+def _get_week_pattern(d: date, year: int) -> int:
+    """Retorna 1 ou 2. A semana que contém 1º de janeiro é sempre Semana 1."""
+    jan1 = date(year, 1, 1)
+    days_to_prev_sunday = (jan1.weekday() + 1) % 7
+    first_week_start = jan1 - timedelta(days=days_to_prev_sunday)
+    week_index = (d - first_week_start).days // 7
+    return 1 if week_index % 2 == 0 else 2
+
+
 def _resolve_location_ids():
     """Retorna (sr_id, apart_id, cias_id) resolvidos por nome. None se ausente."""
     from app.models.location import Location
@@ -114,12 +123,20 @@ def generate_schedule(window_id: int) -> dict:
         for day in all_dates:
             if day.weekday() != routine.day_of_week:
                 continue
-            if routine.frequency == 'weekly':
-                applies = True
-            elif routine.frequency in ('biweekly', 'monthly'):
-                applies = _week_of_month(day) == routine.week_of_month
+            if window.year > 2026:
+                # Novo sistema biweekly: week_number=None=semanal, 1=S1, 2=S2
+                if routine.week_number is None:
+                    applies = True
+                else:
+                    applies = _get_week_pattern(day, window.year) == routine.week_number
             else:
-                applies = False
+                # Sistema legado 2026: frequency/week_of_month
+                if routine.frequency == 'weekly':
+                    applies = True
+                elif routine.frequency in ('biweekly', 'monthly'):
+                    applies = _week_of_month(day) == routine.week_of_month
+                else:
+                    applies = False
             if applies:
                 routine_slots[(day, routine.location_id, routine.scale_type)] = routine.doctor_id
 
