@@ -12,13 +12,6 @@
   </div>
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
     <a href="{{ url_for('admin.windows_detail', id=window.id) }}" class="btn btn-outline">← Janela</a>
-    {% if stats.total > 0 %}
-    <button type="button" class="btn btn-danger btn-sm"
-            onclick="return confirm('Atenção! Isto irá EXCLUIR toda a escala {{ window.year }}. Esta ação não pode ser desfeita.\n\nDeseja continuar?') && document.getElementById('modal-delete-escala').showModal()">
-      <i class="bi bi-trash"></i> Excluir escala
-    </button>
-    {% endif %}
-
     {% if window.status != 'published' and stats.total > 0 %}
     <form method="POST" action="{{ url_for('admin.schedule_approve', id=window.id) }}">
       {{ csrf_token_field() }}
@@ -48,38 +41,7 @@
     </div>
     {% endif %}
 
-    <!-- Modal de confirmação para excluir escala -->
-    <dialog id="modal-delete-escala" class="day-editor-dialog">
-      <form method="POST" action="{{ url_for('admin.schedule_delete', id=window.id) }}"
-            onsubmit="return document.getElementById('delete-confirm-input').value === '{{ window.year }}'
-                      || (alert('Ano digitado incorreto.'), false)">
-        {{ csrf_token_field() }}
-        <div class="day-editor-dialog__header">
-          <strong style="color:var(--danger)"><i class="bi bi-exclamation-triangle"></i> Excluir escala {{ window.year }}</strong>
-          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-sm btn-outline">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <div style="padding:1.25rem;display:grid;gap:1rem;">
-          <p style="color:var(--danger);font-weight:600;">Esta ação excluirá permanentemente todos os plantões gerados para {{ window.year }}.</p>
-          <p style="color:var(--text-muted);font-size:.9rem;">
-            Rotinas e restrições serão preservadas. A janela voltará ao status <strong>Encerrada</strong> e poderá ser regerada.
-          </p>
-          <div>
-            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">
-              Para confirmar, digite o ano <strong>{{ window.year }}</strong>:
-            </label>
-            <input id="delete-confirm-input" type="text" name="confirm_token"
-                   placeholder="{{ window.year }}" autocomplete="off"
-                   style="width:100%;padding:.5rem .75rem;border:2px solid var(--danger);border-radius:6px;font-size:1rem;text-align:center;">
-          </div>
-        </div>
-        <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
-          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-outline">Cancelar</button>
-          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Excluir permanentemente</button>
-        </div>
-      </form>
-    </dialog>
+
   </div>
 </div>
 
