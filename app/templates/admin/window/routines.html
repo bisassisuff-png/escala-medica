@@ -34,7 +34,7 @@
     <span class="badge" style="background:{% if week_num == 1 %}var(--primary-light,#e8f0fe);color:var(--primary){% else %}#f0fdf4;color:#166534{% endif %};padding:.2rem .6rem;border-radius:12px;font-size:.78rem;font-weight:600;">S{{ week_num }}</span>
   </div>
   <div style="overflow-x:auto;">
-    <table class="routines-week-grid">
+    <table class="routines-week-grid" data-week="{{ week_num }}">
       <thead>
         <tr>
           <th style="min-width:140px;">Posição</th>
@@ -234,6 +234,10 @@
 .routines-week-grid th,
 .routines-week-grid td { border:1px solid var(--border);padding:.5rem .75rem; }
 .routines-week-grid thead th { background:var(--surface-secondary,#f8f9fa);font-size:.8rem;text-transform:uppercase;letter-spacing:.04em; }
+.routines-week-grid[data-week="1"] thead th { background:#dbeafe;color:#1e40af; }
+.routines-week-grid[data-week="1"] td { background:#f8faff; }
+.routines-week-grid[data-week="2"] thead th { background:#dcfce7;color:#166534; }
+.routines-week-grid[data-week="2"] td { background:#f7fef9; }
 .routine-chip { display:inline-flex;align-items:center;gap:.25rem;background:var(--primary-light,#e8f0fe);color:var(--primary);border-radius:20px;padding:.2rem .6rem;font-size:.78rem;white-space:nowrap; }
 .routine-chip--semanal { background:#fef3c7;color:#92400e; }
 .routine-chip__name { font-weight:600; }
