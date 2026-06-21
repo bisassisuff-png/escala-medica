@@ -1,0 +1,23 @@
+name: Deploy para VPS
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /root/projetos/escala-medica
+            git pull origin master
+            .venv/bin/pip install -r requirements.txt -q
+            .venv/bin/flask db upgrade
+            systemctl restart escala-medica
+            echo "Deploy concluído: $(date)"
