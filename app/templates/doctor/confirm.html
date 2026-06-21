@@ -8,35 +8,11 @@
 
 {% if confirmed %}
 <div class="alert alert-success">
-  <strong>Dados confirmados!</strong> Suas rotinas e restrições foram registradas. Para alterações, contate o administrador.
+  <strong>Dados confirmados!</strong> Suas restrições foram registradas. Para alterações, contate o administrador.
 </div>
 {% endif %}
 
 <div style="display:grid;gap:1.25rem;">
-
-  <div class="card">
-    <div class="card-header"><h3>Rotinas ({{ routines|length }})</h3></div>
-    {% if routines %}
-    <div class="table-wrapper">
-      <table>
-        <thead><tr><th>Local</th><th>Tipo</th><th>Frequência</th><th>Dia</th><th>Semana</th></tr></thead>
-        <tbody>
-          {% for r in routines %}
-          <tr>
-            <td>{{ r.location.name }}</td>
-            <td>{{ r.scale_type or '—' }}</td>
-            <td>{{ freq_labels[r.frequency] }}</td>
-            <td>{{ days[r.day_of_week] }}</td>
-            <td>{{ weeks[r.week_of_month] if r.week_of_month else '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="card-body"><p style="color:var(--text-muted);">Nenhuma rotina cadastrada. <a href="{{ url_for('doctor.routines') }}">Adicionar →</a></p></div>
-    {% endif %}
-  </div>
 
   <div class="card">
     <div class="card-header"><h3>Restrições ({{ restrictions|length }})</h3></div>
@@ -65,11 +41,10 @@
     <div class="card-body" style="text-align:center;padding:2rem;">
       <h3 style="margin-bottom:.5rem;">Tudo certo?</h3>
       <p style="color:var(--text-muted);margin-bottom:1.5rem;">
-        Ao confirmar, suas rotinas e restrições ficarão travadas.<br>
+        Ao confirmar, suas restrições ficarão travadas.<br>
         Para alterar depois, será necessário solicitar desbloqueio ao administrador.
       </p>
       <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-        <a href="{{ url_for('doctor.routines') }}" class="btn btn-outline">Editar rotinas</a>
         <a href="{{ url_for('doctor.restrictions') }}" class="btn btn-outline">Editar restrições</a>
         <form method="POST" action="{{ url_for('doctor.confirm') }}">
           {{ csrf_token_field() }}

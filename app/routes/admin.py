@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.user import User
 from app.models.location import Location, DoctorLocationLink
-from app.models.schedule import FillingWindow, DoctorWindowConfirmation, Holiday, Schedule, CoverageException, CoverageAcceptance
+from app.models.schedule import FillingWindow, DoctorWindowConfirmation, Holiday, Schedule, CoverageException, CoverageAcceptance, DoctorRoutine
 from app.utils.decorators import admin_required
 from app.utils.audit import log as audit
 from app.utils.calendar_helpers import (
@@ -94,6 +94,7 @@ def doctors_new():
         doctor = User(
             name=form.name.data.strip(),
             crm=form.crm.data.strip() or None,
+            phone=(form.phone.data or '').strip() or None,
             login=form.login.data.strip(),
             email=form.email.data.strip(),
             role='medico',
@@ -120,6 +121,7 @@ def doctors_edit(id):
     if form.validate_on_submit():
         doctor.name = form.name.data.strip()
         doctor.crm = form.crm.data.strip() or None
+        doctor.phone = (form.phone.data or '').strip() or None
         doctor.login = form.login.data.strip()
         doctor.email = form.email.data.strip()
         if form.password.data:
@@ -338,6 +340,30 @@ def windows_new():
     return render_template('admin/window/form.html', form=form, title='Nova Janela')
 
 
+@admin_bp.route('/janela/<int:id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def windows_delete(id):
+    window = db.session.get(FillingWindow, id) or abort(404)
+    confirm_token = request.form.get('confirm_token', '').strip()
+    if confirm_token != str(window.year):
+        flash('Confirmação inválida. Digite o ano corretamente para excluir a janela.', 'danger')
+        return redirect(request.referrer or url_for('admin.windows'))
+    from app.models.schedule import (
+        DoctorWindowConfirmation, DoctorRoutine, DoctorRestriction,
+        Schedule, Holiday, CoverageException, CoverageAcceptance,
+    )
+    year = window.year
+    for model in (CoverageAcceptance, CoverageException, Schedule,
+                  Holiday, DoctorRestriction, DoctorRoutine, DoctorWindowConfirmation):
+        model.query.filter_by(window_id=id).delete()
+    audit('delete_window', 'FillingWindow', id, {'year': year})
+    db.session.delete(window)
+    db.session.commit()
+    flash(f'Janela {year} excluída permanentemente.', 'info')
+    return redirect(url_for('admin.windows'))
+
+
 @admin_bp.route('/janela/<int:id>/abrir', methods=['POST'])
 @login_required
 @admin_required
@@ -398,6 +424,127 @@ def windows_unlock(window_id, doctor_id):
         db.session.commit()
         flash('Médico desbloqueado para edição.', 'success')
     return redirect(url_for('admin.windows_detail', id=window_id))
+
+
+# ── Rotinas da Janela ─────────────────────────────────────────────────────────
+
+@admin_bp.route('/janela/<int:id>/rotinas')
+@login_required
+@admin_required
+def window_routines(id):
+    import json
+    window = db.session.get(FillingWindow, id) or abort(404)
+
+    all_links = DoctorLocationLink.query.filter_by(active=True).order_by(
+        DoctorLocationLink.location_id, DoctorLocationLink.scale_type
+    ).all()
+
+    # Posições distintas e ordenadas: list of (Location, scale_type)
+    seen_positions = {}
+    for lk in all_links:
+        key = (lk.location_id, lk.scale_type)
+        if key not in seen_positions:
+            seen_positions[key] = (lk.location, lk.scale_type)
+    positions = sorted(seen_positions.values(), key=lambda x: (x[0].name, x[1]))
+
+    # Médicos elegíveis por posição: {(loc_id, scale_type): [User, ...]}
+    doctors_by_position = defaultdict(list)
+    for lk in all_links:
+        doctors_by_position[(lk.location_id, lk.scale_type)].append(lk.doctor)
+    for key in doctors_by_position:
+        doctors_by_position[key] = sorted(doctors_by_position[key], key=lambda u: u.name)
+
+    # Rotinas agrupadas por (day_of_week, location_id, scale_type)
+    routines = DoctorRoutine.query.filter_by(window_id=id).all()
+    routines_grid = defaultdict(list)
+    for r in routines:
+        routines_grid[(r.day_of_week, r.location_id, r.scale_type)].append(r)
+
+    # JSON para o JS popular o select de médico no modal
+    doctors_json = {
+        f'{loc_id}:{scale}': [{'id': u.id, 'name': u.name} for u in docs]
+        for (loc_id, scale), docs in doctors_by_position.items()
+    }
+
+    editable = window.status in ('draft', 'open')
+    day_names = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+    freq_short = {'weekly': 'Sem', 'biweekly': 'Quin', 'monthly': 'Men'}
+
+    return render_template('admin/window/routines.html',
+                           window=window, positions=positions,
+                           routines_grid=routines_grid, editable=editable,
+                           day_names=day_names, freq_short=freq_short,
+                           doctors_json=json.dumps(doctors_json))
+
+
+@admin_bp.route('/janela/<int:id>/rotinas/adicionar', methods=['POST'])
+@login_required
+@admin_required
+def window_routines_add(id):
+    from app.forms.admin import AdminRoutineForm
+    window = db.session.get(FillingWindow, id) or abort(404)
+    if window.status not in ('draft', 'open'):
+        flash('Só é possível editar rotinas em janelas em rascunho ou abertas.', 'warning')
+        return redirect(url_for('admin.window_routines', id=id))
+
+    location_id = request.form.get('location_id', type=int)
+    scale_type = request.form.get('scale_type', '')
+    day_of_week = request.form.get('day_of_week', type=int)
+
+    # Busca médicos elegíveis para popular o form de validação
+    links = DoctorLocationLink.query.filter_by(
+        location_id=location_id, scale_type=scale_type, active=True
+    ).all()
+    doctor_choices = [(lk.doctor_id, lk.doctor.name) for lk in links]
+
+    form = AdminRoutineForm(doctor_choices=doctor_choices)
+    if not form.validate_on_submit():
+        for field, errs in form.errors.items():
+            flash(f'{field}: {"; ".join(errs)}', 'danger')
+        return redirect(url_for('admin.window_routines', id=id))
+
+    # Valida vínculo do médico escolhido com a posição
+    valid_ids = {lk.doctor_id for lk in links}
+    if form.doctor_id.data not in valid_ids:
+        flash('Médico não vinculado a esta posição.', 'danger')
+        return redirect(url_for('admin.window_routines', id=id))
+
+    week = form.week_of_month.data if form.week_of_month.data else None
+    routine = DoctorRoutine(
+        doctor_id=form.doctor_id.data,
+        location_id=location_id,
+        scale_type=scale_type,
+        window_id=id,
+        frequency=form.frequency.data,
+        day_of_week=day_of_week,
+        week_of_month=week,
+    )
+    db.session.add(routine)
+    audit('add_routine', 'DoctorRoutine', None, {
+        'window_id': id, 'doctor_id': form.doctor_id.data,
+        'location_id': location_id, 'scale_type': scale_type, 'day': day_of_week,
+    })
+    db.session.commit()
+    flash('Rotina adicionada.', 'success')
+    return redirect(url_for('admin.window_routines', id=id))
+
+
+@admin_bp.route('/janela/<int:id>/rotinas/<int:routine_id>/excluir', methods=['POST'])
+@login_required
+@admin_required
+def window_routines_delete(id, routine_id):
+    window = db.session.get(FillingWindow, id) or abort(404)
+    if window.status not in ('draft', 'open'):
+        flash('Não é possível editar rotinas neste status da janela.', 'warning')
+        return redirect(url_for('admin.window_routines', id=id))
+    routine = db.session.get(DoctorRoutine, routine_id) or abort(404)
+    if routine.window_id != id:
+        abort(403)
+    audit('delete_routine', 'DoctorRoutine', routine.id, {'window_id': id})
+    db.session.delete(routine)
+    db.session.commit()
+    flash('Rotina removida.', 'info')
+    return redirect(url_for('admin.window_routines', id=id))
 
 
 # ── Geração e Publicação da Escala ────────────────────────────────────────────
@@ -696,6 +843,27 @@ def schedule_approve(id):
     db.session.commit()
     flash(f'Escala {window.year} publicada. Médicos já podem visualizar.', 'success')
     return redirect(url_for('admin.schedule_review', id=id))
+
+
+@admin_bp.route('/janela/<int:id>/escala/excluir', methods=['POST'])
+@login_required
+@admin_required
+def schedule_delete(id):
+    window = db.session.get(FillingWindow, id) or abort(404)
+    confirm_token = request.form.get('confirm_token', '').strip()
+    if confirm_token != str(window.year):
+        flash('Confirmação inválida. Digite o ano corretamente para excluir a escala.', 'danger')
+        return redirect(url_for('admin.schedule_review', id=id))
+    from app.models.schedule import Schedule, CoverageException, CoverageAcceptance
+    CoverageAcceptance.query.filter_by(window_id=id).delete()
+    CoverageException.query.filter_by(window_id=id).delete()
+    Schedule.query.filter_by(window_id=id).delete()
+    if window.status == 'published':
+        window.status = 'closed'
+    audit('delete_schedule', 'FillingWindow', id, {'year': window.year})
+    db.session.commit()
+    flash(f'Escala {window.year} excluída. A janela voltou para "Encerrada" e pode ser regerada.', 'warning')
+    return redirect(url_for('admin.windows_detail', id=id))
 
 
 def _last_day(year: int, month: int):

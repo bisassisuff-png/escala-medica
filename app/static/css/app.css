@@ -773,3 +773,27 @@ tbody tr:hover td { background: #fafbfc; }
   thead th, tbody td { padding: .5rem .75rem; font-size: .8125rem; }
   .cal-day { min-height: 90px; }
 }
+
+/* ── Tooltip de regras do botão "Gerar escala" ─────────────────────────── */
+.gen-tooltip-wrap { position: relative; display: inline-block; }
+.gen-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 360px;
+  background: var(--text);
+  color: #fff;
+  font-size: .76rem;
+  line-height: 1.55;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: .65rem .85rem;
+  z-index: 1100;
+  pointer-events: none;
+  text-align: left;
+}
+.gen-tooltip-wrap:hover .gen-tooltip { display: block; }
+.gen-tooltip strong { display: block; margin-bottom: .35rem; font-size: .78rem; }
+.gen-tooltip ol { margin: 0; padding-left: 1.25rem; }
+.gen-tooltip li { margin-bottom: .3rem; }

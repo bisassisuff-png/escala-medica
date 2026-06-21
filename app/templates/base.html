@@ -81,17 +81,6 @@
         <i class="bi bi-grid-1x2"></i> Painel
       </a>
       {% if has_open_window %}
-      <a href="{{ url_for('doctor.routines') }}"
-         class="sidebar-item {% if request.endpoint == 'doctor.routines' %}active{% endif %}">
-        <i class="bi bi-calendar3"></i> Rotinas
-      </a>
-      {% else %}
-      <span class="sidebar-item sidebar-item--disabled"
-            title="Disponível quando houver uma janela de preenchimento aberta">
-        <i class="bi bi-calendar3"></i> Rotinas
-      </span>
-      {% endif %}
-      {% if has_open_window %}
       <a href="{{ url_for('doctor.restrictions') }}"
          class="sidebar-item {% if request.endpoint == 'doctor.restrictions' %}active{% endif %}">
         <i class="bi bi-slash-circle"></i> Restrições

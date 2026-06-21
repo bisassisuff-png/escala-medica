@@ -13,7 +13,7 @@
     <div>
       <strong>Janela de preenchimento {{ window.year }} aberta</strong>
       <p style="color:var(--text-muted);font-size:.875rem;margin-top:.25rem;">
-        {% if confirmed %}Você confirmou seus dados.{% else %}Informe suas rotinas e restrições.{% endif %}
+        {% if confirmed %}Você confirmou seus dados.{% else %}Informe suas restrições de datas.{% endif %}
       </p>
     </div>
     {% if not confirmed %}
@@ -25,11 +25,6 @@
 </div>
 
 <div class="kpi-grid" style="margin-bottom:1.5rem;">
-  <div class="kpi-card">
-    <div class="kpi-card__label">Rotinas cadastradas</div>
-    <div class="kpi-card__value">{{ routines_count }}</div>
-    <div class="kpi-card__sub"><a href="{{ url_for('doctor.routines') }}">Gerenciar →</a></div>
-  </div>
   <div class="kpi-card">
     <div class="kpi-card__label">Datas de restrição</div>
     <div class="kpi-card__value">{{ restrictions_count }}</div>

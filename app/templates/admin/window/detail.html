@@ -15,11 +15,24 @@
   </div>
   <div style="display:flex;gap:.5rem;">
     <a href="{{ url_for('admin.windows') }}" class="btn btn-outline">← Janelas</a>
+    <a href="{{ url_for('admin.window_routines', id=window.id) }}" class="btn btn-outline"><i class="bi bi-calendar3"></i> Rotinas</a>
     {% if window.status == 'closed' %}
-    <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
-      {{ csrf_token_field() }}
-      <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')"><i class="bi bi-lightning"></i> Gerar escala</button>
-    </form>
+    <div class="gen-tooltip-wrap">
+      <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
+        {{ csrf_token_field() }}
+        <button class="btn btn-primary" onclick="return confirm('Gerar escala para {{ window.year }}?')"><i class="bi bi-lightning"></i> Gerar escala</button>
+      </form>
+      <div class="gen-tooltip">
+        <strong>Regras consideradas na geração automática:</strong>
+        <ol>
+          <li>O médico escalado como P1 no Hospital Santa Rita também cobre o Doppler do Hospital Santa Rita e o P2 do Hospital Vitória Apart no mesmo dia.</li>
+          <li>O médico escalado como P1 no Hospital Vitória Apart também cobre o P2 do Hospital Santa Rita no mesmo dia.</li>
+          <li>Preferência por incluir nos plantões do Hospital Santa Rita e do Hospital Vitória Apart os mesmos profissionais que estão de sobreaviso no CIAS naquele dia.</li>
+          <li>Nos feriados prolongados em segunda ou terça-feira, o profissional que cobriu o sábado e domingo anteriores também cobre o feriado. Em feriados na quinta ou sexta-feira, o profissional que cobre o sábado e domingo seguintes também cobre o feriado.</li>
+          <li>Os feriados prolongados são distribuídos de forma justa entre todos os profissionais que compõem as escalas de fim de semana.</li>
+        </ol>
+      </div>
+    </div>
     {% endif %}
     {% if window.status in ('open', 'closed', 'published') %}
     <a href="{{ url_for('admin.schedule_review', id=window.id) }}" class="btn btn-primary"><i class="bi bi-calendar2-check"></i> Ver escala</a>

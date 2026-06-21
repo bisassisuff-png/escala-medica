@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, SelectField
 from wtforms.validators import DataRequired, Length, Email, Optional, ValidationError
 from app.models.user import User
 
@@ -7,6 +7,7 @@ from app.models.user import User
 class DoctorForm(FlaskForm):
     name = StringField('Nome completo', validators=[DataRequired(), Length(2, 200)])
     crm = StringField('CRM', validators=[Optional(), Length(max=20)])
+    phone = StringField('Telefone', validators=[Optional(), Length(max=30)])
     login = StringField('Login', validators=[DataRequired(), Length(3, 100)])
     email = StringField('E-mail', validators=[DataRequired(), Email(), Length(max=200)])
     password = PasswordField('Senha', validators=[Optional(), Length(min=6)])
@@ -37,3 +38,22 @@ class DoctorForm(FlaskForm):
 class LocationForm(FlaskForm):
     name = StringField('Nome', validators=[DataRequired(), Length(2, 200)])
     submit = SubmitField('Salvar')
+
+
+class AdminRoutineForm(FlaskForm):
+    doctor_id = SelectField('Médico', coerce=int, validators=[DataRequired()])
+    frequency = SelectField('Frequência', choices=[
+        ('weekly', 'Semanal'), ('biweekly', 'Quinzenal'), ('monthly', 'Mensal'),
+    ], validators=[DataRequired()])
+    week_of_month = SelectField('Semana', choices=[
+        (0, '—'), (1, '1ª'), (2, '2ª'), (3, '3ª'), (4, '4ª'), (5, '5ª'),
+    ], coerce=int, validators=[Optional()])
+    submit = SubmitField('Adicionar')
+
+    def __init__(self, doctor_choices=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.doctor_id.choices = doctor_choices or []
+
+    def validate_week_of_month(self, field):
+        if self.frequency.data in ('biweekly', 'monthly') and not field.data:
+            raise ValidationError('Informe a semana do mês para esta frequência.')

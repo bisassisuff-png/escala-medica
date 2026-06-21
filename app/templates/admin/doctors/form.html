@@ -25,16 +25,23 @@
           {% for e in form.crm.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
         </div>
         <div class="form-group">
+          {{ form.phone.label(class="form-label") }}
+          {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), placeholder="Ex: (27) 99999-9999", type="tel") }}
+          {% for e in form.phone.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
           {{ form.login.label(class="form-label") }}
           {{ form.login(class="form-control" + (" is-invalid" if form.login.errors else "")) }}
           {% for e in form.login.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
         </div>
-      </div>
-
-      <div class="form-group">
-        {{ form.email.label(class="form-label") }}
-        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), type="email") }}
-        {% for e in form.email.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <div class="form-group">
+          {{ form.email.label(class="form-label") }}
+          {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), type="email") }}
+          {% for e in form.email.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
       </div>
 
       <div class="form-group">

@@ -12,6 +12,40 @@
   </div>
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
     <a href="{{ url_for('admin.windows_detail', id=window.id) }}" class="btn btn-outline">← Janela</a>
+    {% if stats.total > 0 %}
+    <button type="button" class="btn btn-danger btn-sm"
+            onclick="return confirm('Atenção! Isto irá EXCLUIR toda a escala {{ window.year }}. Esta ação não pode ser desfeita.\n\nDeseja continuar?') && document.getElementById('modal-delete-escala').showModal()">
+      <i class="bi bi-trash"></i> Excluir escala
+    </button>
+    {% endif %}
+    <button type="button" class="btn btn-danger btn-sm"
+            onclick="return confirm('Atenção! Isto irá EXCLUIR PERMANENTEMENTE a janela {{ window.year }} e todos os seus dados.\n\nDeseja continuar?') && document.getElementById('modal-delete-janela').showModal()">
+      <i class="bi bi-trash-fill"></i> Excluir janela
+    </button>
+    <dialog id="modal-delete-janela" class="day-editor-dialog">
+      <form method="POST" action="{{ url_for('admin.windows_delete', id=window.id) }}"
+            onsubmit="return document.getElementById('del-janela-tok').value === '{{ window.year }}'
+                      || (alert('Ano digitado incorreto.'), false)">
+        {{ csrf_token_field() }}
+        <div class="day-editor-dialog__header">
+          <strong style="color:var(--danger)"><i class="bi bi-exclamation-triangle"></i> Excluir janela {{ window.year }}</strong>
+          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-sm btn-outline"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem;">
+          <p style="color:var(--danger);font-weight:600;">Esta ação excluirá permanentemente a janela {{ window.year }} e todos os dados vinculados: rotinas, restrições, escala, feriados e exceções.</p>
+          <div>
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Para confirmar, digite o ano <strong>{{ window.year }}</strong>:</label>
+            <input id="del-janela-tok" type="text" name="confirm_token"
+                   placeholder="{{ window.year }}" autocomplete="off"
+                   style="width:100%;padding:.5rem .75rem;border:2px solid var(--danger);border-radius:6px;font-size:1rem;text-align:center;">
+          </div>
+        </div>
+        <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
+          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-outline">Cancelar</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill"></i> Excluir permanentemente</button>
+        </div>
+      </form>
+    </dialog>
     {% if window.status != 'published' and stats.total > 0 %}
     <form method="POST" action="{{ url_for('admin.schedule_approve', id=window.id) }}">
       {{ csrf_token_field() }}
@@ -21,13 +55,58 @@
     </form>
     {% endif %}
     {% if window.status == 'closed' %}
-    <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
-      {{ csrf_token_field() }}
-      <button class="btn btn-outline" onclick="return confirm('Regerar a escala? As entradas anteriores serão substituídas.')">
-        <i class="bi bi-arrow-repeat"></i> Regerar
-      </button>
-    </form>
+    <div class="gen-tooltip-wrap">
+      <form method="POST" action="{{ url_for('admin.schedule_generate', id=window.id) }}">
+        {{ csrf_token_field() }}
+        <button class="btn btn-outline" onclick="return confirm('Regerar a escala? As entradas anteriores serão substituídas.')">
+          <i class="bi bi-arrow-repeat"></i> Regerar
+        </button>
+      </form>
+      <div class="gen-tooltip">
+        <strong>Regras consideradas na geração automática:</strong>
+        <ol>
+          <li>O médico escalado como P1 no Hospital Santa Rita também cobre o Doppler do Hospital Santa Rita e o P2 do Hospital Vitória Apart no mesmo dia.</li>
+          <li>O médico escalado como P1 no Hospital Vitória Apart também cobre o P2 do Hospital Santa Rita no mesmo dia.</li>
+          <li>Preferência por incluir nos plantões do Hospital Santa Rita e do Hospital Vitória Apart os mesmos profissionais que estão de sobreaviso no CIAS naquele dia.</li>
+          <li>Nos feriados prolongados em segunda ou terça-feira, o profissional que cobriu o sábado e domingo anteriores também cobre o feriado. Em feriados na quinta ou sexta-feira, o profissional que cobre o sábado e domingo seguintes também cobre o feriado.</li>
+          <li>Os feriados prolongados são distribuídos de forma justa entre todos os profissionais que compõem as escalas de fim de semana.</li>
+        </ol>
+      </div>
+    </div>
     {% endif %}
+
+    <!-- Modal de confirmação para excluir escala -->
+    <dialog id="modal-delete-escala" class="day-editor-dialog">
+      <form method="POST" action="{{ url_for('admin.schedule_delete', id=window.id) }}"
+            onsubmit="return document.getElementById('delete-confirm-input').value === '{{ window.year }}'
+                      || (alert('Ano digitado incorreto.'), false)">
+        {{ csrf_token_field() }}
+        <div class="day-editor-dialog__header">
+          <strong style="color:var(--danger)"><i class="bi bi-exclamation-triangle"></i> Excluir escala {{ window.year }}</strong>
+          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-sm btn-outline">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem;">
+          <p style="color:var(--danger);font-weight:600;">Esta ação excluirá permanentemente todos os plantões gerados para {{ window.year }}.</p>
+          <p style="color:var(--text-muted);font-size:.9rem;">
+            Rotinas e restrições serão preservadas. A janela voltará ao status <strong>Encerrada</strong> e poderá ser regerada.
+          </p>
+          <div>
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">
+              Para confirmar, digite o ano <strong>{{ window.year }}</strong>:
+            </label>
+            <input id="delete-confirm-input" type="text" name="confirm_token"
+                   placeholder="{{ window.year }}" autocomplete="off"
+                   style="width:100%;padding:.5rem .75rem;border:2px solid var(--danger);border-radius:6px;font-size:1rem;text-align:center;">
+          </div>
+        </div>
+        <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
+          <button type="button" onclick="this.closest('dialog').close()" class="btn btn-outline">Cancelar</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Excluir permanentemente</button>
+        </div>
+      </form>
+    </dialog>
   </div>
 </div>
 
@@ -272,7 +351,7 @@
     <span><span class="cal-legend__dot cal-legend__dot--gap"></span>Sem cobertura</span>
     <span><span class="cal-legend__dot cal-legend__dot--exception"></span>Sem escala prevista</span>
   </div>
-  <dialog class="day-editor-dialog">
+  <dialog id="day-editor-dialog" class="day-editor-dialog">
     <form method="dialog" class="day-editor-dialog__close">
       <button type="submit" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
     </form>
@@ -331,7 +410,7 @@
 })();
 
 (function() {
-  const dialog = document.querySelector('.day-editor-dialog');
+  const dialog = document.getElementById('day-editor-dialog');
   if (!dialog) return;
   const title = dialog.querySelector('.day-editor-dialog__title');
   const body = dialog.querySelector('.day-editor-dialog__body');

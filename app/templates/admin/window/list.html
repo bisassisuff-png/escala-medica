@@ -25,7 +25,11 @@
         {% endif %}
       </div>
       <div style="display:flex;gap:.5rem;">
+        {% if w.status in ('closed', 'published') %}
+        <a href="{{ url_for('admin.schedule_review', id=w.id) }}" class="btn btn-sm btn-outline">Ver detalhes</a>
+        {% else %}
         <a href="{{ url_for('admin.windows_detail', id=w.id) }}" class="btn btn-sm btn-outline">Ver detalhes</a>
+        {% endif %}
         {% if w.status == 'draft' %}
           <form method="POST" action="{{ url_for('admin.windows_open', id=w.id) }}">
             {{ csrf_token_field() }}
@@ -37,6 +41,34 @@
             <button class="btn btn-sm btn-danger" onclick="return confirm('Encerrar o preenchimento da janela {{ w.year }}?')">Encerrar</button>
           </form>
         {% endif %}
+        <button type="button" class="btn btn-sm btn-danger"
+                onclick="return confirm('Atenção! Isto irá EXCLUIR permanentemente a janela {{ w.year }} e todos os seus dados.\n\nDeseja continuar?') && document.getElementById('modal-del-win-{{ w.id }}').showModal()">
+          <i class="bi bi-trash"></i> Excluir
+        </button>
+        <dialog id="modal-del-win-{{ w.id }}" class="day-editor-dialog">
+          <form method="POST" action="{{ url_for('admin.windows_delete', id=w.id) }}"
+                onsubmit="return document.getElementById('del-win-tok-{{ w.id }}').value === '{{ w.year }}'
+                          || (alert('Ano digitado incorreto.'), false)">
+            {{ csrf_token_field() }}
+            <div class="day-editor-dialog__header">
+              <strong style="color:var(--danger)"><i class="bi bi-exclamation-triangle"></i> Excluir janela {{ w.year }}</strong>
+              <button type="button" onclick="this.closest('dialog').close()" class="btn btn-sm btn-outline"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div style="padding:1.25rem;display:grid;gap:1rem;">
+              <p style="color:var(--danger);font-weight:600;">Esta ação excluirá permanentemente a janela {{ w.year }} e todos os dados vinculados (rotinas, restrições, escala, feriados).</p>
+              <div>
+                <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;">Para confirmar, digite o ano <strong>{{ w.year }}</strong>:</label>
+                <input id="del-win-tok-{{ w.id }}" type="text" name="confirm_token"
+                       placeholder="{{ w.year }}" autocomplete="off"
+                       style="width:100%;padding:.5rem .75rem;border:2px solid var(--danger);border-radius:6px;font-size:1rem;text-align:center;">
+              </div>
+            </div>
+            <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem;">
+              <button type="button" onclick="this.closest('dialog').close()" class="btn btn-outline">Cancelar</button>
+              <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Excluir permanentemente</button>
+            </div>
+          </form>
+        </dialog>
       </div>
     </div>
     <div class="card-body" style="display:flex;gap:2rem;flex-wrap:wrap;font-size:.9rem;color:var(--text-muted);">

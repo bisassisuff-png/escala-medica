@@ -2,7 +2,7 @@ from datetime import date as date_type
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models.schedule import FillingWindow, DoctorRoutine, DoctorRestriction, DoctorWindowConfirmation, Holiday
+from app.models.schedule import FillingWindow, DoctorRestriction, DoctorWindowConfirmation, Holiday
 from app.utils.decorators import medico_required
 from app.utils.audit import log as audit
 from app.utils.calendar_helpers import (
@@ -11,10 +11,6 @@ from app.utils.calendar_helpers import (
 )
 
 doctor_bp = Blueprint('doctor', __name__, url_prefix='/medico')
-
-DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-WEEKS = {1: '1ª sem.', 2: '2ª sem.', 3: '3ª sem.', 4: '4ª sem.', 5: '5ª sem.'}
-FREQ_LABELS = {'weekly': 'Semanal', 'biweekly': 'Quinzenal', 'monthly': 'Mensal'}
 
 
 def _get_open_window():
@@ -42,9 +38,6 @@ def dashboard():
 
     open_window = _get_open_window()
     confirmed = _is_confirmed(current_user.id, open_window.id) if open_window else False
-    routines_count = (DoctorRoutine.query
-                      .filter_by(doctor_id=current_user.id, window_id=open_window.id)
-                      .count()) if open_window else 0
     restrictions_count = (DoctorRestriction.query
                           .filter_by(doctor_id=current_user.id, window_id=open_window.id)
                           .count()) if open_window else 0
@@ -63,70 +56,12 @@ def dashboard():
 
     return render_template('doctor/dashboard.html',
                            window=open_window, confirmed=confirmed,
-                           routines_count=routines_count,
                            restrictions_count=restrictions_count,
                            published_window=published_window,
                            month_stats=month_stats,
                            month=month,
                            month_names=month_names,
                            **mednews_ctx)
-
-
-@doctor_bp.route('/rotinas', methods=['GET', 'POST'])
-@login_required
-@medico_required
-def routines():
-    from app.forms.doctor import DoctorRoutineForm
-    window = _get_open_window()
-    if not window:
-        flash('Não há janela de preenchimento aberta no momento.', 'warning')
-        return redirect(url_for('doctor.dashboard'))
-
-    confirmed = _is_confirmed(current_user.id, window.id)
-    form = DoctorRoutineForm(doctor=current_user)
-    routines = (DoctorRoutine.query
-                .filter_by(doctor_id=current_user.id, window_id=window.id)
-                .order_by(DoctorRoutine.day_of_week)
-                .all())
-
-    if not confirmed and form.validate_on_submit():
-        routine = DoctorRoutine(
-            doctor_id=current_user.id,
-            location_id=form.location_id.data,
-            window_id=window.id,
-            frequency=form.frequency.data,
-            day_of_week=form.day_of_week.data,
-            week_of_month=form.week_of_month.data if form.week_of_month.data else None,
-            scale_type='24h',
-        )
-        db.session.add(routine)
-        audit('add_routine', 'DoctorRoutine', None, {'window_id': window.id})
-        db.session.commit()
-        flash('Rotina adicionada.', 'success')
-        return redirect(url_for('doctor.routines'))
-
-    return render_template('doctor/routines.html',
-                           form=form, window=window, routines=routines,
-                           confirmed=confirmed, days=DAYS,
-                           freq_labels=FREQ_LABELS, weeks=WEEKS)
-
-
-@doctor_bp.route('/rotinas/<int:id>/excluir', methods=['POST'])
-@login_required
-@medico_required
-def routines_delete(id):
-    routine = db.session.get(DoctorRoutine, id) or abort(404)
-    if routine.doctor_id != current_user.id:
-        abort(403)
-    window = db.session.get(FillingWindow, routine.window_id)
-    if _is_confirmed(current_user.id, window.id):
-        flash('Você já confirmou seus dados. Solicite ao ADMIN para desbloquear.', 'warning')
-        return redirect(url_for('doctor.routines'))
-    audit('delete_routine', 'DoctorRoutine', routine.id, {})
-    db.session.delete(routine)
-    db.session.commit()
-    flash('Rotina removida.', 'info')
-    return redirect(url_for('doctor.routines'))
 
 
 @doctor_bp.route('/restricoes', methods=['GET', 'POST'])
@@ -200,18 +135,13 @@ def confirmation():
         return redirect(url_for('doctor.dashboard'))
 
     confirmed = _is_confirmed(current_user.id, window.id)
-    routines = (DoctorRoutine.query
-                .filter_by(doctor_id=current_user.id, window_id=window.id)
-                .order_by(DoctorRoutine.day_of_week)
-                .all())
     restrictions = (DoctorRestriction.query
                     .filter_by(doctor_id=current_user.id, window_id=window.id)
                     .order_by(DoctorRestriction.restricted_date)
                     .all())
     return render_template('doctor/confirm.html',
                            window=window, confirmed=confirmed,
-                           routines=routines, restrictions=restrictions,
-                           days=DAYS, freq_labels=FREQ_LABELS, weeks=WEEKS)
+                           restrictions=restrictions)
 
 
 @doctor_bp.route('/confirmar', methods=['POST'])

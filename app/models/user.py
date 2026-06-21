@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     login = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False)
+    phone = db.Column(db.String(30), nullable=True)
     role = db.Column(sa.Enum('admin', 'medico', name='user_role'), nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

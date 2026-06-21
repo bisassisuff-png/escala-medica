@@ -1,8 +1,8 @@
 """
 Serviço de notícias médicas (card "MedNews" do dashboard admin).
 Busca as 2 publicações mais recentes de duas fontes e grava em cache
-(tabela med_news_items). Pensado para rodar 1x/semana via CLI (`flask
-mednews-refresh`) — o dashboard só lê o cache.
+(tabela med_news_items). Roda diariamente às 5h via cron
+(scripts/mednews_refresh.sh) — o dashboard só lê o cache.
 """
 import logging
 import xml.etree.ElementTree as ET

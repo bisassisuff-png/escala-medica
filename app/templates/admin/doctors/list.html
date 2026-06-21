@@ -24,6 +24,7 @@
         <tr>
           <th>Nome</th>
           <th>CRM</th>
+          <th>Telefone</th>
           <th>Login</th>
           <th>E-mail</th>
           <th>Situação</th>
@@ -35,6 +36,7 @@
         <tr>
           <td><strong>{{ d.name }}</strong></td>
           <td>{{ d.crm or '—' }}</td>
+          <td>{{ d.phone or '—' }}</td>
           <td><code>{{ d.login }}</code></td>
           <td>{{ d.email }}</td>
           <td>
