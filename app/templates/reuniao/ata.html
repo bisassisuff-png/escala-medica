@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Ata — {{ reuniao.titulo }} — Vascular Vix AI HUB{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Ata — {{ reuniao.titulo }}</h1>
+  <a href="{{ url_for('reuniao.lista') }}" class="btn btn-outline btn-sm">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
+
+{% if reuniao.status == 'processando' %}
+  <div class="alert alert-info">
+    <i class="bi bi-hourglass-split"></i>
+    A gravação foi encerrada e está na fila de processamento. A transcrição e a ata
+    são geradas automaticamente durante a madrugada. Volte mais tarde.
+  </div>
+{% elif reuniao.status == 'erro' %}
+  <div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle"></i>
+    Ocorreu um erro ao processar esta reunião. Verifique os logs
+    (<code>logs/reunioes.log</code>) ou tente reprocessar.
+  </div>
+{% elif reuniao.status in ('aberta', 'gravando') %}
+  <div class="alert alert-warning">
+    Esta reunião ainda não foi encerrada — a ata só é gerada após o encerramento.
+  </div>
+{% endif %}
+
+{% if reuniao.ata %}
+<div class="card">
+  <div class="card-header">
+    <h3>Ata da reunião</h3>
+    <span style="color:var(--text-muted);font-size:.8rem;">{{ reuniao.criada_em.strftime('%d/%m/%Y') }}</span>
+  </div>
+  <div class="card-body">
+    <div id="ata-content" style="white-space:pre-wrap;line-height:1.6;">{{ reuniao.ata }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if reuniao.transcricao %}
+<div class="card" style="margin-top:1rem;">
+  <div class="card-body">
+    <details>
+      <summary style="cursor:pointer;font-weight:600;">Ver transcrição bruta</summary>
+      <div style="white-space:pre-wrap;line-height:1.5;margin-top:.75rem;color:var(--text-muted);font-size:.9rem;">{{ reuniao.transcricao }}</div>
+    </details>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Realce leve do markdown da ata: converte linhas "## Título" em subtítulos.
+(function () {
+  const el = document.getElementById('ata-content');
+  if (!el) return;
+  const raw = el.textContent;
+  el.textContent = '';
+  raw.split('\n').forEach(line => {
+    const t = line.trim();
+    if (t.startsWith('## ')) {
+      const h = document.createElement('h4');
+      h.textContent = t.slice(3);
+      h.style.margin = '1rem 0 .35rem';
+      el.appendChild(h);
+    } else {
+      el.appendChild(document.createTextNode(line + '\n'));
+    }
+  });
+})();
+</script>
+{% endblock %}

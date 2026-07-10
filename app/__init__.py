@@ -23,14 +23,17 @@ def create_app(config_name=None):
         User, Location, DoctorLocationLink,
         DoctorWindowConfirmation, FillingWindow, DoctorRoutine, DoctorRestriction, Schedule, Holiday,
         CoverageException, ScheduleSwap, SwapNotification, AuditLog, MedNewsItem,
+        Reuniao, ReuniaoParticipante,
     )
 
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
     from app.routes.doctor import doctor_bp
+    from app.routes.reuniao import reuniao_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(doctor_bp)
+    app.register_blueprint(reuniao_bp)
 
     from flask_wtf.csrf import generate_csrf
     from markupsafe import Markup

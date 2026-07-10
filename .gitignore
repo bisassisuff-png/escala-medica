@@ -6,6 +6,9 @@ env/
 # Variáveis de ambiente (segredos)
 .env
 
+# Gravações de reunião (áudio médico sensível — nunca versionar)
+gravacoes/
+
 # Python
 __pycache__/
 *.py[cod]

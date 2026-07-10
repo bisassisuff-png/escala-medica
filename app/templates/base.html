@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Vascular Vix AI HUB{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,6 +75,18 @@
         <i class="bi bi-bar-chart-line"></i> KPIs
       </a>
 
+      <div class="sidebar-section">Reuniões</div>
+      {% if config.REUNIOES_ENABLED %}
+      <a href="{{ url_for('reuniao.lista') }}"
+         class="sidebar-item {% if request.blueprint == 'reuniao' %}active{% endif %}">
+        <i class="bi bi-camera-video"></i> Reuniões
+      </a>
+      {% else %}
+      <span class="sidebar-item sidebar-item--disabled" title="Em breve">
+        <i class="bi bi-camera-video"></i> Reuniões
+      </span>
+      {% endif %}
+
     {% else %}
       <div class="sidebar-section">Minha Área</div>
       <a href="{{ url_for('doctor.dashboard') }}"
@@ -116,6 +129,16 @@
         <i class="bi bi-arrow-left-right"></i> Trocas
         <span id="swap-badge" style="display:none;background:var(--danger);color:#fff;border-radius:99px;font-size:.65rem;padding:.15rem .45rem;margin-left:auto;font-weight:700;">0</span>
       </a>
+      {% if config.REUNIOES_ENABLED %}
+      <a href="{{ url_for('reuniao.lista') }}"
+         class="sidebar-item {% if request.blueprint == 'reuniao' %}active{% endif %}">
+        <i class="bi bi-camera-video"></i> Reuniões
+      </a>
+      {% else %}
+      <span class="sidebar-item sidebar-item--disabled" title="Em breve">
+        <i class="bi bi-camera-video"></i> Reuniões
+      </span>
+      {% endif %}
     {% endif %}
   </nav>
 

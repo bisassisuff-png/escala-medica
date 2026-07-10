@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}{{ reuniao.titulo }} — Sala — Vascular Vix AI HUB{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ reuniao.titulo }}</h1>
+  <a href="{{ url_for('reuniao.lista') }}" class="btn btn-outline btn-sm">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
+
+<div id="rec-banner" class="alert alert-danger" style="display:none;align-items:center;gap:.5rem;">
+  <span style="width:.7rem;height:.7rem;border-radius:50%;background:#dc2626;display:inline-block;animation:pulse 1s infinite;"></span>
+  Gravação em andamento — esta reunião está sendo gravada para geração de ata.
+</div>
+
+<div id="conn-status" class="alert alert-info">Conectando à sala…</div>
+
+{% if is_host %}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-body" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+    <strong style="margin-right:.5rem;">Controles do host:</strong>
+    <button id="btn-iniciar" class="btn btn-danger" disabled data-no-loading>
+      <i class="bi bi-record-circle"></i> Iniciar gravação
+    </button>
+    <button id="btn-encerrar" class="btn btn-outline" style="display:none;" data-no-loading>
+      <i class="bi bi-stop-circle"></i> Encerrar e processar
+    </button>
+    <span id="rec-info" style="color:var(--text-muted);font-size:.85rem;"></span>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><h3>Participantes</h3></div>
+  <div class="card-body">
+    <div id="participants" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem;"></div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.pt-tile { border:1px solid var(--border,#e5e7eb); border-radius:var(--radius,8px); padding:.5rem; text-align:center; }
+.pt-tile video { width:100%; border-radius:6px; background:#000; aspect-ratio:4/3; object-fit:cover; }
+.pt-tile__name { font-size:.85rem; margin-top:.35rem; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<script>
+(function () {
+  const REUNIAO_ID = {{ reuniao.id }};
+  const IS_HOST = {{ 'true' if is_host else 'false' }};
+  const CSRF = document.querySelector('meta[name=csrf-token]').content;
+  const URLS = {
+    entrar:   "{{ url_for('reuniao.entrar') }}",
+    iniciar:  "{{ url_for('reuniao.iniciar_gravacao', reuniao_id=reuniao.id) }}",
+    encerrar: "{{ url_for('reuniao.encerrar_gravacao', reuniao_id=reuniao.id) }}",
+    chunk:    "{{ url_for('reuniao.chunk') }}",
+    ata:      "{{ url_for('reuniao.ata', reuniao_id=reuniao.id) }}",
+  };
+
+  const LK = window.LivekitClient;
+  const { Room, RoomEvent, Track } = LK;
+
+  const statusEl = document.getElementById('conn-status');
+  const participantsEl = document.getElementById('participants');
+
+  // --- helpers de POST com CSRF -------------------------------------------
+  function postForm(url, fields) {
+    const fd = new FormData();
+    for (const k in fields) fd.append(k, fields[k]);
+    return fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd });
+  }
+
+  // --- render de participantes --------------------------------------------
+  const tiles = {};
+  function tileFor(identity, name) {
+    if (tiles[identity]) return tiles[identity];
+    const el = document.createElement('div');
+    el.className = 'pt-tile';
+    el.innerHTML = '<div class="pt-media"></div><div class="pt-tile__name"></div>';
+    el.querySelector('.pt-tile__name').textContent = name || identity;
+    participantsEl.appendChild(el);
+    tiles[identity] = el;
+    return el;
+  }
+  function removeTile(identity) {
+    if (tiles[identity]) { tiles[identity].remove(); delete tiles[identity]; }
+  }
+
+  // --- mixagem de áudio (Web Audio) para gravação -------------------------
+  let audioCtx = null, mixDest = null;
+  const mixedTracks = new Set();  // sids já conectados ao mix
+  function ensureMix() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      mixDest = audioCtx.createMediaStreamDestination();
+    }
+    return mixDest;
+  }
+  function addToMix(mediaStreamTrack, sid) {
+    if (!mediaStreamTrack || (sid && mixedTracks.has(sid))) return;
+    if (sid) mixedTracks.add(sid);
+    const src = audioCtx.createMediaStreamSource(new MediaStream([mediaStreamTrack]));
+    src.connect(mixDest);
+  }
+
+  // --- gravação ------------------------------------------------------------
+  let recorder = null, seq = 0, uploadChain = Promise.resolve(), recording = false;
+
+  function pickMime() {
+    const opts = ['audio/webm;codecs=opus', 'audio/webm'];
+    for (const m of opts) if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+    return '';
+  }
+
+  function collectAudioForMix(room) {
+    ensureMix();
+    // trilha local (microfone do host)
+    room.localParticipant.audioTrackPublications.forEach(pub => {
+      if (pub.track && pub.track.mediaStreamTrack) addToMix(pub.track.mediaStreamTrack, pub.trackSid);
+    });
+    // trilhas remotas já inscritas
+    room.remoteParticipants.forEach(p => {
+      p.audioTrackPublications.forEach(pub => {
+        if (pub.isSubscribed && pub.track && pub.track.mediaStreamTrack)
+          addToMix(pub.track.mediaStreamTrack, pub.trackSid);
+      });
+    });
+  }
+
+  async function startRecording(room) {
+    await postForm(URLS.iniciar, {}).then(r => { if (!r.ok) throw new Error('iniciar falhou'); });
+    collectAudioForMix(room);
+    const mime = pickMime();
+    recorder = new MediaRecorder(mixDest.stream, mime ? { mimeType: mime } : undefined);
+    seq = 0;
+    recorder.ondataavailable = (e) => {
+      if (!e.data || e.data.size === 0) return;
+      const s = seq++;
+      const blob = e.data;
+      // envio SEQUENCIAL (append no servidor depende da ordem)
+      uploadChain = uploadChain.then(() =>
+        postForm(URLS.chunk, { reuniao_id: REUNIAO_ID, seq: s, chunk: blob })
+          .catch(err => console.error('chunk', s, err))
+      );
+    };
+    recorder.start(1000);
+    recording = true;
+    document.getElementById('rec-banner').style.display = 'flex';
+    const info = document.getElementById('rec-info');
+    if (info) info.textContent = 'Gravando…';
+  }
+
+  async function stopRecording() {
+    if (!recorder) return;
+    const done = new Promise(res => { recorder.onstop = res; });
+    recorder.stop();
+    recording = false;
+    await done;
+    await uploadChain;                      // garante o último chunk enviado
+    await postForm(URLS.encerrar, {});
+    document.getElementById('rec-banner').style.display = 'none';
+    window.location.href = URLS.ata;
+  }
+
+  // --- fluxo principal -----------------------------------------------------
+  async function main() {
+    let data;
+    try {
+      const resp = await postForm(URLS.entrar, { reuniao_id: REUNIAO_ID });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      data = await resp.json();
+    } catch (err) {
+      statusEl.className = 'alert alert-danger';
+      statusEl.textContent = 'Não foi possível obter acesso à sala. ' + err.message;
+      return;
+    }
+
+    const room = new Room({ adaptiveStream: true, dynacast: true });
+
+    room
+      .on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
+        const tile = tileFor(participant.identity, participant.name);
+        if (track.kind === Track.Kind.Video) {
+          const v = track.attach(); v.autoplay = true; v.playsInline = true;
+          tile.querySelector('.pt-media').replaceChildren(v);
+        } else if (track.kind === Track.Kind.Audio) {
+          const a = track.attach(); a.autoplay = true; document.body.appendChild(a);
+          if (recording) addToMix(track.mediaStreamTrack, pub.trackSid);
+        }
+      })
+      .on(RoomEvent.ParticipantConnected, p => tileFor(p.identity, p.name))
+      .on(RoomEvent.ParticipantDisconnected, p => removeTile(p.identity))
+      .on(RoomEvent.Disconnected, () => {
+        statusEl.className = 'alert alert-warning';
+        statusEl.textContent = 'Desconectado da sala.';
+      });
+
+    try {
+      await room.connect(data.ws_url, data.token);
+      await room.localParticipant.setMicrophoneEnabled(true);
+      // câmera é opcional — habilite se quiser vídeo por padrão:
+      // await room.localParticipant.setCameraEnabled(true);
+      tileFor(room.localParticipant.identity, room.localParticipant.name + ' (você)');
+      room.remoteParticipants.forEach(p => tileFor(p.identity, p.name));
+      statusEl.className = 'alert alert-success';
+      statusEl.textContent = 'Conectado à sala.';
+    } catch (err) {
+      statusEl.className = 'alert alert-danger';
+      statusEl.textContent = 'Falha ao conectar: ' + err.message;
+      return;
+    }
+
+    if (IS_HOST) {
+      const btnIniciar = document.getElementById('btn-iniciar');
+      const btnEncerrar = document.getElementById('btn-encerrar');
+      btnIniciar.disabled = false;
+      btnIniciar.addEventListener('click', async () => {
+        btnIniciar.disabled = true;
+        try {
+          await startRecording(room);
+          btnIniciar.style.display = 'none';
+          btnEncerrar.style.display = '';
+        } catch (err) {
+          btnIniciar.disabled = false;
+          alert('Erro ao iniciar gravação: ' + err.message);
+        }
+      });
+      btnEncerrar.addEventListener('click', async () => {
+        btnEncerrar.disabled = true;
+        document.getElementById('rec-info').textContent = 'Enviando áudio e encerrando…';
+        try { await stopRecording(); }
+        catch (err) { alert('Erro ao encerrar: ' + err.message); btnEncerrar.disabled = false; }
+      });
+      window.addEventListener('beforeunload', (e) => {
+        if (recording) { e.preventDefault(); e.returnValue = ''; }
+      });
+    }
+  }
+
+  if (!LK) {
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Biblioteca de vídeo não carregou (verifique a conexão).';
+  } else {
+    main();
+  }
+})();
+</script>
+{% endblock %}

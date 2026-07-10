@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Reuniões — Vascular Vix AI HUB{% endblock %}
+
+{% set status_info = {
+  'aberta':      ('Aberta',       '#6b7280'),
+  'gravando':    ('Gravando',     '#dc2626'),
+  'processando': ('Processando',  '#d97706'),
+  'concluida':   ('Concluída',    '#16a34a'),
+  'erro':        ('Erro',         '#dc2626'),
+} %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Reuniões</h1>
+  {% if current_user.is_admin %}
+  <a href="{{ url_for('reuniao.criar') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Nova reunião
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ 'Todas as reuniões' if current_user.is_admin else 'Minhas reuniões' }}</h3>
+    <span style="color:var(--text-muted);font-size:.875rem;">{{ reunioes|length }}</span>
+  </div>
+
+  {% if reunioes %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Título</th><th>Criada em</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in reunioes %}
+        {% set label, cor = status_info.get(r.status, (r.status, '#6b7280')) %}
+        <tr>
+          <td><strong>{{ r.titulo }}</strong></td>
+          <td>{{ r.criada_em.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td>
+            <span class="badge" style="background:{{ cor }};color:#fff;">{{ label }}</span>
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            {% if r.status in ('aberta', 'gravando') %}
+            <a href="{{ url_for('reuniao.sala', reuniao_id=r.id) }}" class="btn btn-sm btn-primary">
+              <i class="bi bi-camera-video"></i> Entrar
+            </a>
+            {% endif %}
+            {% if r.status == 'concluida' %}
+            <a href="{{ url_for('reuniao.ata', reuniao_id=r.id) }}" class="btn btn-sm btn-outline">
+              <i class="bi bi-file-text"></i> Ver ata
+            </a>
+            {% elif r.status in ('processando', 'erro') %}
+            <a href="{{ url_for('reuniao.ata', reuniao_id=r.id) }}" class="btn btn-sm btn-outline">
+              <i class="bi bi-hourglass-split"></i> Status
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body empty-state">
+    <p>Nenhuma reunião {{ '' if current_user.is_admin else 'atribuída a você ' }}ainda.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

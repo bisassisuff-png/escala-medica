@@ -4,6 +4,7 @@ from app.models.schedule import DoctorWindowConfirmation, FillingWindow, DoctorR
 from app.models.swap import ScheduleSwap, SwapNotification
 from app.models.audit import AuditLog
 from app.models.mednews import MedNewsItem
+from app.models.reuniao import Reuniao, ReuniaoParticipante
 
 __all__ = [
     'User',
@@ -21,4 +22,6 @@ __all__ = [
     'SwapNotification',
     'AuditLog',
     'MedNewsItem',
+    'Reuniao',
+    'ReuniaoParticipante',
 ]

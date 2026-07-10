@@ -13,3 +13,5 @@ alembic==1.13.2
 email-validator==2.2.0
 requests==2.34.2
 beautifulsoup4==4.15.0
+livekit-api==0.8.1
+faster-whisper==1.0.3

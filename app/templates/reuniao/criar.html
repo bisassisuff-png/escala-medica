@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Nova reunião — Vascular Vix AI HUB{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Nova reunião</h1>
+</div>
+
+<div class="card" style="max-width:640px;">
+  <div class="card-header"><h3>Dados da reunião</h3></div>
+  <div class="card-body">
+    <form method="POST" novalidate>
+      {{ csrf_token_field() }}
+
+      <div class="form-group">
+        <label class="form-label" for="titulo">Título</label>
+        <input class="form-control" id="titulo" name="titulo" type="text"
+               placeholder="Ex.: Reunião de escala — julho" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Participantes</label>
+        <p style="color:var(--text-muted);font-size:.85rem;margin:.25rem 0 .5rem;">
+          Selecione quem poderá entrar na sala e ver a ata. Você (criador) é o host
+          e grava a reunião.
+        </p>
+        {% if medicos %}
+        <div style="max-height:280px;overflow:auto;border:1px solid var(--border,#e5e7eb);border-radius:var(--radius,8px);padding:.5rem .75rem;">
+          {% for m in medicos %}
+          <label style="display:flex;align-items:center;gap:.5rem;padding:.25rem 0;cursor:pointer;">
+            <input type="checkbox" name="participantes" value="{{ m.id }}"
+                   {% if m.id == current_user.id %}checked{% endif %}>
+            <span>{{ m.name }}
+              {% if m.is_admin %}<span class="badge badge-admin">Admin</span>{% endif %}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">Nenhum médico ativo cadastrado.</p>
+        {% endif %}
+      </div>
+
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+        <a href="{{ url_for('reuniao.lista') }}" class="btn btn-outline">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Criar reunião</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
