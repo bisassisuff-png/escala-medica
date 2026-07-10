@@ -1,0 +1,52 @@
+Ligar o módulo de reuniões no sistema escala-medica (produção, nesta VPS).
+
+>> ANTES DE LIGAR — ROTACIONAR CREDENCIAIS (recomendado):
+   Durante a implantação, o GitHub PAT (colado no chat), o LiveKit API Secret e a
+   DeepSeek key ficaram em texto plano na sessão/working tree (nunca em commit). Como
+   precaução, gere chaves novas e atualize APENAS o /root/projetos/escala-medica/.env:
+     - LiveKit Cloud (painel do projeto → Keys): novo API Key/Secret.
+     - DeepSeek (platform.deepseek.com → API Keys): nova key.
+     - GitHub: novo Personal Access Token e, de preferência, migrar o remote para SSH.
+   Depois de trocar no .env, siga os passos abaixo (o restart já recarrega as novas chaves).
+
+CONTEXTO
+- Projeto Flask em /root/projetos/escala-medica (rodo como root; venv em .venv).
+- Serviço systemd: escala-medica (gunicorn em 127.0.0.1:5000, atrás do Nginx).
+- O módulo de reuniões (blueprint `reuniao`, transcrição faster-whisper, ata via
+  DeepSeek, sala LiveKit Cloud) JÁ está implantado, porém DESATIVADO por um feature
+  flag `REUNIOES_ENABLED` (default false, definido em config.py). Enquanto off, o item
+  "Reuniões" aparece no menu acinzentado e as rotas mostram a página "em breve".
+- As credenciais (LIVEKIT_API_KEY/SECRET/WS_URL e DEEPSEEK_API_KEY) já estão no
+  /root/projetos/escala-medica/.env. Swap de 2GB, migration, pasta gravacoes/ (700) e
+  o cron das 3h (scripts/processar_reunioes.sh) já estão configurados.
+
+TAREFA
+1. No arquivo /root/projetos/escala-medica/.env, adicionar (ou ajustar) a linha:
+      REUNIOES_ENABLED=true
+   Não mexer em nenhuma outra variável. Não commitar o .env (ele é gitignored).
+2. Confirmar que as 4 chaves (LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_WS_URL,
+   DEEPSEEK_API_KEY) estão preenchidas no .env; se alguma estiver vazia, parar e me avisar.
+3. Reiniciar o serviço: systemctl restart escala-medica
+4. Verificar que ficou ativo:
+   - systemctl status escala-medica  (deve estar "active (running)")
+   - curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5000/reuniao/  → deve
+     redirecionar para login (302) OU, logado, abrir a lista — mas NÃO deve mais mostrar
+     a página "em breve". Pode também confirmar via:
+     FLASK_ENV=production .venv/bin/python -c "from app import create_app; print(create_app('production').config['REUNIOES_ENABLED'])"
+     → deve imprimir True.
+
+VERIFICAÇÃO END-TO-END (fazer comigo, no navegador, via HTTPS)
+- Logar como admin → menu "Reuniões" agora clicável → criar uma reunião com 1-2
+  participantes.
+- Abrir a sala em 2 navegadores/dispositivos (host + 1 médico), permitir microfone;
+  host clica "Iniciar gravação", fala ~1 min, "Encerrar".
+  Conferir na VPS: ls -la /root/projetos/escala-medica/gravacoes/ → arquivo
+  reuniao_<id>.webm com tamanho > 0; status vira "processando".
+- Rodar o batch manualmente (sem esperar as 3h):
+     cd /root/projetos/escala-medica && .venv/bin/python scripts/processar_reunioes.py
+  Conferir: transcricao e ata preenchidas, status "concluida", o .webm foi apagado, e a
+  ata aparece em Reuniões → Ver ata. Log em logs/reunioes.log.
+
+PARA DESLIGAR DE NOVO (se precisar)
+- Remover/comentar REUNIOES_ENABLED no .env (ou setar =false) e
+  systemctl restart escala-medica.
